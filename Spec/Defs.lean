@@ -1,7 +1,8 @@
 /-
   The definitions and checks the specification uses, written from
   RFC 8949 and RFC 3629, independently of the proofs. Part of the
-  approved specification, with `Spec.lean` and `SPEC.md`.
+  specification for this slice, with `Spec.lean` and `SPEC.md`; the
+  specification is unreviewed (see `SPEC.md`).
 
   The `example`s pin the UTF-8 validator against the boundary cases of
   RFC 3629: one example per row of its well-formed byte condition
