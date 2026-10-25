@@ -9,4 +9,4 @@
     "Spec.cbor_rejects_bad_utf8", "Spec.cbor_rejects_truncation"
   ],
   "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
-    }
+}
