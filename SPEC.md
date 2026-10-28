@@ -99,7 +99,7 @@ same names in `Proofs/`, and the build fails if any proof breaks.
 | The 37 in-slice rows of RFC 8949 Appendix A hold, both directions | `Spec.cbor_rfc8949_vectors` |
 | The 44 out-of-slice rows of Appendix A, and break alone, are turned away | `Spec.cbor_rejects_out_of_slice` |
 | Five example text items with bad UTF-8 are turned away | `Spec.cbor_rejects_bad_utf8` |
-| Eight example inputs that end inside an item or go on after it are turned away | `Spec.cbor_rejects_truncation` |
+| Eight example inputs are turned away: empty, cut short inside an item, or going on after one | `Spec.cbor_rejects_truncation` |
 
 `Spec.cbor_encode_decode` is an if and only if: `decode bs = some v`
 holds exactly when `v.wf = true` and `encode v = bs`. With
@@ -125,7 +125,8 @@ theorem.
   and `false`, `true`, `null`.
 - `r <hex>` decodes, then encodes again, and prints the lowercase hex
   of the encoding, or `error`. For every input the decoder accepts,
-  soundness says the answer is the input itself.
+  `Spec.cbor_encode_decode` says the encoding is the input's bytes, so
+  the answer is the input in lowercase hex.
 
 Hex is two lowercase or uppercase digits per byte. Any other line,
 including odd-length hex, prints `error`.

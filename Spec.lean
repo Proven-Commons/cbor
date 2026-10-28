@@ -256,7 +256,8 @@ theorem Spec.cbor_rejects_bad_utf8 :
 theorem Spec.cbor_rejects_truncated (v : Value) (pre post : List UInt8) (hv : v.wf = true)
     (h : pre ++ post = Spec.enc v) (hpost : post ≠ []) : decode pre = none := sorry
 
-/-- Examples: input that ends inside an item, or goes on after it. -/
+/-- Examples: the empty input, input that ends inside an item, and
+    input that goes on after an item. -/
 theorem Spec.cbor_rejects_truncation :
     decode [] = none ∧
     decode [0x18] = none ∧

@@ -27,8 +27,11 @@ printf 'r 83010203\n' | .lake/build/bin/cbor
 
 The tool reads one request per line. `d <hex>` prints the item in a
 canonical text form (`[1,2,3]` for the example), or `error`. `r <hex>`
-decodes and encodes again, printing the lowercase hex of the encoding;
-for any input the decoder accepts, the answer is the input itself.
+decodes and encodes again, printing the lowercase hex of the encoding.
+For any input the decoder accepts, `Spec.cbor_encode_decode` says the
+encoding is the input's bytes, so the answer is the input in lowercase
+hex. The tool's hex parsing and printing are not proved; see What is
+not proved.
 
 ## What is proved
 
@@ -65,7 +68,7 @@ Examples, checked by the proofs:
 | All 37 rows of RFC 8949 Appendix A that are in the slice hold in both directions: encoding the item gives the bytes, and decoding the bytes gives the item. | `Spec.cbor_rfc8949_vectors` |
 | All 44 rows of Appendix A outside the slice are turned away (bignums, floats, undefined and other simple values, tags, indefinite-length items alone and nested), and so is break on its own. | `Spec.cbor_rejects_out_of_slice` |
 | Five text items whose payloads are not well-formed UTF-8 are turned away. | `Spec.cbor_rejects_bad_utf8` |
-| Eight inputs that end inside an item, or go on after one, are turned away. | `Spec.cbor_rejects_truncation` |
+| Eight inputs are turned away: the empty input, six that end inside an item, and one that goes on after an item. | `Spec.cbor_rejects_truncation` |
 
 `lake comparator --paranoid` checks that each proof proves exactly the
 statement in `Spec.lean`, uses no axiom but `propext`,
