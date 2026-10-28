@@ -12,20 +12,20 @@ open Cbor
 theorem readArg_none_of_ge_28 {ai : Nat} {rest : List UInt8} (h : ai ≥ 28) :
     readArg ai rest = none := by
   simp only [readArg]
-  rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega),
-      if_neg (by omega)]
+  rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
+      ite_eq_right (by omega)]
 
 theorem Spec.cbor_rejects_reserved_ai (b : UInt8) (rest : List UInt8) :
     b.toNat % 32 ≥ 28 → decode (b :: rest) = none := by
   intro h
   have hnone : decodeFuel (rest.length + 1 + 1) (b :: rest) = none := by
-    simp only [decodeFuel, List.length_cons]
+    simp only [decodeFuel]
     by_cases h7 : b.toNat / 32 = 7
-    · rw [if_pos h7, if_neg (by omega), if_neg (by omega), if_neg (by omega)]
-    · rw [if_neg h7]
+    · rw [ite_eq_left h7, ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega)]
+    · rw [ite_eq_right h7]
       by_cases h6 : b.toNat / 32 = 6
-      · rw [if_pos h6]
-      · rw [if_neg h6, readArg_none_of_ge_28 h]
+      · rw [ite_eq_left h6]
+      · rw [ite_eq_right h6, readArg_none_of_ge_28 h]
   simp [decode, List.length_cons, hnone]
 
 theorem Spec.cbor_rejects_tags (b : UInt8) (rest : List UInt8) :
@@ -33,7 +33,7 @@ theorem Spec.cbor_rejects_tags (b : UInt8) (rest : List UInt8) :
   intro h
   have hnone : decodeFuel (rest.length + 1 + 1) (b :: rest) = none := by
     simp only [decodeFuel]
-    rw [if_neg (by omega), if_pos h]
+    rw [ite_eq_right (by omega), ite_eq_left h]
   simp [decode, hnone]
 
 theorem Spec.cbor_rejects_simple (b : UInt8) (rest : List UInt8) :
@@ -42,7 +42,7 @@ theorem Spec.cbor_rejects_simple (b : UInt8) (rest : List UInt8) :
   intro h7 h4 h5 h6
   have hnone : decodeFuel (rest.length + 1 + 1) (b :: rest) = none := by
     simp only [decodeFuel]
-    rw [if_pos h7, if_neg h4, if_neg h5, if_neg h6]
+    rw [ite_eq_left h7, ite_eq_right h4, ite_eq_right h5, ite_eq_right h6]
   simp [decode, hnone]
 
 theorem Spec.cbor_rfc8949_vectors :

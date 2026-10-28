@@ -127,7 +127,7 @@ theorem head_parse (mt arg : Nat) (rest : List UInt8) (hmt : mt ≤ 5) (harg : a
     exact h
   unfold head
   by_cases h1 : arg < 24
-  · rw [if_pos h1]
+  · rw [ite_eq_left h1]
     have e1 : (arg.toUInt8).toNat = arg := by
       have : (arg.toUInt8).toNat = arg % 256 := by simp [Nat.toUInt8]
       rw [this, Nat.mod_eq_of_lt (by omega)]
@@ -135,11 +135,11 @@ theorem head_parse (mt arg : Nat) (rest : List UInt8) (hmt : mt ≤ 5) (harg : a
       ?_, ?_⟩
     · rw [hmod _ (by rw [e1]; omega), e1]; omega
     · rw [hmod _ (by rw [e1]; omega), e1]
-      simp only [readArg, List.nil_append, List.singleton_append]
-      rw [if_pos (by omega : arg ≤ 23)]
-  · rw [if_neg h1]
+      simp only [readArg, List.nil_append]
+      rw [ite_eq_left (by omega : arg ≤ 23)]
+  · rw [ite_eq_right h1]
     by_cases h2 : arg ≤ 0xFF
-    · rw [if_pos h2]
+    · rw [ite_eq_left h2]
       have e2 : (arg.toUInt8).toNat = arg := by
         have : (arg.toUInt8).toNat = arg % 256 := by simp [Nat.toUInt8]
         rw [this, Nat.mod_eq_of_lt (by omega)]
@@ -148,21 +148,21 @@ theorem head_parse (mt arg : Nat) (rest : List UInt8) (hmt : mt ≤ 5) (harg : a
       · rw [hmod _ (by decide : (24:UInt8).toNat ≤ 27)]; decide
       · rw [hmod _ (by decide : (24:UInt8).toNat ≤ 27)]
         change readArg 24 (arg.toUInt8 :: rest) = some (arg, rest)
-        rw [Cbor.readArg.eq_def, if_neg (by decide : ¬(24:Nat) ≤ 23), if_pos rfl]
+        rw [Cbor.readArg.eq_def, ite_eq_right (by decide : ¬(24:Nat) ≤ 23), ite_eq_left rfl]
         show (if (arg.toUInt8).toNat ≥ 24 then some ((arg.toUInt8).toNat, rest)
           else none) = some (arg, rest)
-        rw [e2, if_pos (by omega : arg ≥ 24)]
-    · rw [if_neg h2]
+        rw [e2, ite_eq_left (by omega : arg ≥ 24)]
+    · rw [ite_eq_right h2]
       by_cases h3 : arg ≤ 0xFFFF
-      · rw [if_pos h3]
+      · rw [ite_eq_left h3]
         refine ⟨(mt * 32).toUInt8 + 25, beBytes 2 arg, rfl,
           hdiv _ (by decide), ?_, ?_⟩
         · rw [hmod _ (by decide : (25:UInt8).toNat ≤ 27)]; decide
         · rw [hmod _ (by decide : (25:UInt8).toNat ≤ 27)]
           have hb2 : arg < 65536 := by omega
           change readArg 25 (beBytes 2 arg ++ rest) = some (arg, rest)
-          rw [Cbor.readArg.eq_def, if_neg (by decide : ¬(25:Nat) ≤ 23),
-            if_neg (by decide : ¬(25:Nat) = 24), if_pos rfl, List.splitAt_eq]
+          rw [Cbor.readArg.eq_def, ite_eq_right (by decide : ¬(25:Nat) ≤ 23),
+            ite_eq_right (by decide : ¬(25:Nat) = 24), ite_eq_left rfl, List.splitAt_eq]
           show (if (List.take 2 (beBytes 2 arg ++ rest)).length = 2 ∧
                 readBe (List.take 2 (beBytes 2 arg ++ rest)) ≥ 2 ^ 8
               then some (readBe (List.take 2 (beBytes 2 arg ++ rest)),
@@ -170,19 +170,19 @@ theorem head_parse (mt arg : Nat) (rest : List UInt8) (hmt : mt ≤ 5) (harg : a
           rw [List.take_append_of_le_length (by simp [beBytes_length]), htk 2,
             readBe_beBytes 2 arg hb2,
             List.drop_append_of_le_length (by simp [beBytes_length]), hdr 2,
-            List.nil_append, if_pos ⟨by rw [beBytes_length], by omega⟩]
-      · rw [if_neg h3]
+            List.nil_append, ite_eq_left ⟨by rw [beBytes_length], by omega⟩]
+      · rw [ite_eq_right h3]
         by_cases h4 : arg ≤ 0xFFFFFFFF
-        · rw [if_pos h4]
+        · rw [ite_eq_left h4]
           refine ⟨(mt * 32).toUInt8 + 26, beBytes 4 arg, rfl,
             hdiv _ (by decide), ?_, ?_⟩
           · rw [hmod _ (by decide : (26:UInt8).toNat ≤ 27)]; decide
           · rw [hmod _ (by decide : (26:UInt8).toNat ≤ 27)]
             have hb4 : arg < 4294967296 := by omega
             change readArg 26 (beBytes 4 arg ++ rest) = some (arg, rest)
-            rw [Cbor.readArg.eq_def, if_neg (by decide : ¬(26:Nat) ≤ 23),
-              if_neg (by decide : ¬(26:Nat) = 24), if_neg (by decide : ¬(26:Nat) = 25),
-              if_pos rfl, List.splitAt_eq]
+            rw [Cbor.readArg.eq_def, ite_eq_right (by decide : ¬(26:Nat) ≤ 23),
+              ite_eq_right (by decide : ¬(26:Nat) = 24), ite_eq_right (by decide : ¬(26:Nat) = 25),
+              ite_eq_left rfl, List.splitAt_eq]
             show (if (List.take 4 (beBytes 4 arg ++ rest)).length = 4 ∧
                   readBe (List.take 4 (beBytes 4 arg ++ rest)) ≥ 2 ^ 16
                 then some (readBe (List.take 4 (beBytes 4 arg ++ rest)),
@@ -190,8 +190,8 @@ theorem head_parse (mt arg : Nat) (rest : List UInt8) (hmt : mt ≤ 5) (harg : a
             rw [List.take_append_of_le_length (by simp [beBytes_length]), htk 4,
               readBe_beBytes 4 arg hb4,
               List.drop_append_of_le_length (by simp [beBytes_length]), hdr 4,
-              List.nil_append, if_pos ⟨by rw [beBytes_length], by omega⟩]
-        · rw [if_neg h4]
+              List.nil_append, ite_eq_left ⟨by rw [beBytes_length], by omega⟩]
+        · rw [ite_eq_right h4]
           have hb : arg < 256 ^ 8 := by
             rw [show (256:Nat)^8 = 18446744073709551616 from rfl]
             have harg' : arg < 18446744073709551616 := harg
@@ -201,9 +201,9 @@ theorem head_parse (mt arg : Nat) (rest : List UInt8) (hmt : mt ≤ 5) (harg : a
           · rw [hmod _ (by decide : (27:UInt8).toNat ≤ 27)]; decide
           · rw [hmod _ (by decide : (27:UInt8).toNat ≤ 27)]
             change readArg 27 (beBytes 8 arg ++ rest) = some (arg, rest)
-            rw [Cbor.readArg.eq_def, if_neg (by decide : ¬(27:Nat) ≤ 23),
-              if_neg (by decide : ¬(27:Nat) = 24), if_neg (by decide : ¬(27:Nat) = 25),
-              if_neg (by decide : ¬(27:Nat) = 26), List.splitAt_eq]
+            rw [Cbor.readArg.eq_def, ite_eq_right (by decide : ¬(27:Nat) ≤ 23),
+              ite_eq_right (by decide : ¬(27:Nat) = 24), ite_eq_right (by decide : ¬(27:Nat) = 25),
+              ite_eq_right (by decide : ¬(27:Nat) = 26), List.splitAt_eq]
             show (if (List.take 8 (beBytes 8 arg ++ rest)).length = 8 ∧
                   readBe (List.take 8 (beBytes 8 arg ++ rest)) ≥ 2 ^ 32
                 then some (readBe (List.take 8 (beBytes 8 arg ++ rest)),
@@ -211,21 +211,21 @@ theorem head_parse (mt arg : Nat) (rest : List UInt8) (hmt : mt ≤ 5) (harg : a
             rw [List.take_append_of_le_length (by simp [beBytes_length]), htk 8,
               readBe_beBytes 8 arg hb,
               List.drop_append_of_le_length (by simp [beBytes_length]), hdr 8,
-              List.nil_append, if_pos ⟨by rw [beBytes_length], by omega⟩]
+              List.nil_append, ite_eq_left ⟨by rw [beBytes_length], by omega⟩]
 
 
 theorem head_length_pos (mt arg : Nat) : 1 ≤ (head mt arg).length := by
   unfold head
   dsimp only
   by_cases h1 : arg < 24
-  · rw [if_pos h1]; simp
+  · rw [ite_eq_left h1]; simp
   · by_cases h2 : arg ≤ 255
-    · rw [if_neg h1, if_pos h2]; simp
+    · rw [ite_eq_right h1, ite_eq_left h2]; simp
     · by_cases h3 : arg ≤ 65535
-      · rw [if_neg h1, if_neg h2, if_pos h3]; simp [beBytes_length]
+      · rw [ite_eq_right h1, ite_eq_right h2, ite_eq_left h3]; simp [beBytes_length]
       · by_cases h4 : arg ≤ 4294967295
-        · rw [if_neg h1, if_neg h2, if_neg h3, if_pos h4]; simp [beBytes_length]
-        · rw [if_neg h1, if_neg h2, if_neg h3, if_neg h4]; simp [beBytes_length]
+        · rw [ite_eq_right h1, ite_eq_right h2, ite_eq_right h3, ite_eq_left h4]; simp [beBytes_length]
+        · rw [ite_eq_right h1, ite_eq_right h2, ite_eq_right h3, ite_eq_right h4]; simp [beBytes_length]
 
 end Cbor
 
@@ -313,7 +313,7 @@ theorem decodeFuel_head (mt arg : Nat) (rest : List UInt8) (hmt : mt ≤ 5)
       else none) := by
   obtain ⟨b, tail, e, hb, _hmod, hrd⟩ := head_parse mt arg rest hmt harg
   rw [e, show (b :: tail) ++ rest = b :: (tail ++ rest) from rfl, decodeFuel_cons,
-    hb, if_neg (by omega : ¬(mt = 7)), if_neg (by omega : ¬(mt = 6)), hrd]
+    hb, ite_eq_right (by omega : ¬(mt = 7)), ite_eq_right (by omega : ¬(mt = 6)), hrd]
 /-- Every item has depth at least one. -/
 theorem depth_pos (v : Value) : 1 ≤ v.depth := by
   cases v <;> simp only [Value.depth] <;> omega
@@ -458,19 +458,19 @@ theorem rtAll : ∀ F : Nat,
       | uint n =>
         simp only [encode]
         rw [decodeFuel_head 0 n.toNat rest (by decide) (UInt64.toNat_lt n) (F + 1),
-          if_pos rfl, UInt64.ofNat_toNat]
+          ite_eq_left rfl, UInt64.ofNat_toNat]
       | nint n =>
         simp only [encode]
         rw [decodeFuel_head 1 n.toNat rest (by decide) (UInt64.toNat_lt n) (F + 1),
-          if_neg (by decide : ¬(1:Nat) = 0), if_pos rfl, UInt64.ofNat_toNat]
+          ite_eq_right (by decide : ¬(1:Nat) = 0), ite_eq_left rfl, UInt64.ofNat_toNat]
       | bytes bs =>
         simp only [Value.wf] at hwf
         have hlen : bs.length < 2 ^ 64 := of_decide_eq_true hwf
         simp only [encode]
         rw [List.append_assoc,
           decodeFuel_head 2 bs.length (bs ++ rest) (by decide) hlen (F + 1),
-          if_neg (by decide : ¬(2:Nat) = 0), if_neg (by decide : ¬(2:Nat) = 1), if_pos rfl,
-          if_neg (by rw [List.length_append]; omega : ¬(bs ++ rest).length < bs.length),
+          ite_eq_right (by decide : ¬(2:Nat) = 0), ite_eq_right (by decide : ¬(2:Nat) = 1), ite_eq_left rfl,
+          ite_eq_right (by rw [List.length_append]; omega : ¬(bs ++ rest).length < bs.length),
           List.take_append_of_le_length (Nat.le_refl bs.length), List.take_length,
           List.drop_append_of_le_length (Nat.le_refl bs.length), List.drop_length,
           List.nil_append]
@@ -481,11 +481,11 @@ theorem rtAll : ∀ F : Nat,
         simp only [encode]
         rw [List.append_assoc,
           decodeFuel_head 3 bs.length (bs ++ rest) (by decide) hlen' (F + 1),
-          if_neg (by decide : ¬(3:Nat) = 0), if_neg (by decide : ¬(3:Nat) = 1),
-          if_neg (by decide : ¬(3:Nat) = 2), if_pos rfl,
-          if_neg (by rw [List.length_append]; omega : ¬(bs ++ rest).length < bs.length),
+          ite_eq_right (by decide : ¬(3:Nat) = 0), ite_eq_right (by decide : ¬(3:Nat) = 1),
+          ite_eq_right (by decide : ¬(3:Nat) = 2), ite_eq_left rfl,
+          ite_eq_right (by rw [List.length_append]; omega : ¬(bs ++ rest).length < bs.length),
           List.take_append_of_le_length (Nat.le_refl bs.length), List.take_length,
-          if_pos hval,
+          ite_eq_left hval,
           List.drop_append_of_le_length (Nat.le_refl bs.length), List.drop_length,
           List.nil_append]
       | array xs =>
@@ -497,8 +497,8 @@ theorem rtAll : ∀ F : Nat,
         simp only [encode]
         rw [List.append_assoc,
           decodeFuel_head 4 xs.length (encodeList xs ++ rest) (by decide) hlen' (F + 1),
-          if_neg (by decide : ¬(4:Nat) = 0), if_neg (by decide : ¬(4:Nat) = 1),
-          if_neg (by decide : ¬(4:Nat) = 2), if_neg (by decide : ¬(4:Nat) = 3), if_pos rfl,
+          ite_eq_right (by decide : ¬(4:Nat) = 0), ite_eq_right (by decide : ¬(4:Nat) = 1),
+          ite_eq_right (by decide : ¬(4:Nat) = 2), ite_eq_right (by decide : ¬(4:Nat) = 3), ite_eq_left rfl,
           ihl xs rest hwfA hdep]
       | map kvs =>
         simp only [Value.wf, Bool.and_eq_true] at hwf
@@ -509,28 +509,28 @@ theorem rtAll : ∀ F : Nat,
         simp only [encode]
         rw [List.append_assoc,
           decodeFuel_head 5 kvs.length (encodePairs kvs ++ rest) (by decide) hlen' (F + 1),
-          if_neg (by decide : ¬(5:Nat) = 0), if_neg (by decide : ¬(5:Nat) = 1),
-          if_neg (by decide : ¬(5:Nat) = 2), if_neg (by decide : ¬(5:Nat) = 3),
-          if_neg (by decide : ¬(5:Nat) = 4), if_pos rfl,
+          ite_eq_right (by decide : ¬(5:Nat) = 0), ite_eq_right (by decide : ¬(5:Nat) = 1),
+          ite_eq_right (by decide : ¬(5:Nat) = 2), ite_eq_right (by decide : ¬(5:Nat) = 3),
+          ite_eq_right (by decide : ¬(5:Nat) = 4), ite_eq_left rfl,
           ihp kvs rest hwfP hdep]
       | vfalse =>
         simp only [encode]
         show decodeFuel (F + 1 + 1) (0xf4 :: rest) = some (.vfalse, rest)
-        rw [decodeFuel_cons, if_pos (by decide : (0xf4 : UInt8).toNat / 32 = 7),
-          if_pos (by decide : (0xf4 : UInt8).toNat = 0xf4)]
+        rw [decodeFuel_cons, ite_eq_left (by decide : (0xf4 : UInt8).toNat / 32 = 7),
+          ite_eq_left (by decide : (0xf4 : UInt8).toNat = 0xf4)]
       | vtrue =>
         simp only [encode]
         show decodeFuel (F + 1 + 1) (0xf5 :: rest) = some (.vtrue, rest)
-        rw [decodeFuel_cons, if_pos (by decide : (0xf5 : UInt8).toNat / 32 = 7),
-          if_neg (by decide : ¬(0xf5 : UInt8).toNat = 0xf4),
-          if_pos (by decide : (0xf5 : UInt8).toNat = 0xf5)]
+        rw [decodeFuel_cons, ite_eq_left (by decide : (0xf5 : UInt8).toNat / 32 = 7),
+          ite_eq_right (by decide : ¬(0xf5 : UInt8).toNat = 0xf4),
+          ite_eq_left (by decide : (0xf5 : UInt8).toNat = 0xf5)]
       | vnull =>
         simp only [encode]
         show decodeFuel (F + 1 + 1) (0xf6 :: rest) = some (.vnull, rest)
-        rw [decodeFuel_cons, if_pos (by decide : (0xf6 : UInt8).toNat / 32 = 7),
-          if_neg (by decide : ¬(0xf6 : UInt8).toNat = 0xf4),
-          if_neg (by decide : ¬(0xf6 : UInt8).toNat = 0xf5),
-          if_pos (by decide : (0xf6 : UInt8).toNat = 0xf6)]
+        rw [decodeFuel_cons, ite_eq_left (by decide : (0xf6 : UInt8).toNat / 32 = 7),
+          ite_eq_right (by decide : ¬(0xf6 : UInt8).toNat = 0xf4),
+          ite_eq_right (by decide : ¬(0xf6 : UInt8).toNat = 0xf5),
+          ite_eq_left (by decide : (0xf6 : UInt8).toNat = 0xf6)]
     have hl : ∀ xs rest, Value.wfAll xs = true → Value.depthList xs ≤ F + 1 →
         decodeItems (decodeFuel (F + 1 + 1)) xs.length (encodeList xs ++ rest) =
           some (xs, rest) := by
@@ -622,46 +622,46 @@ theorem head_sound (b : UInt8) (rest : List UInt8) (mt : Nat) (hmt : b.toNat / 3
       ← hk2, hb_eq]
   unfold readArg at h
   by_cases h1 : b.toNat % 32 ≤ 23
-  · rw [if_pos h1] at h
+  · rw [ite_eq_left h1] at h
     injection h with hpair; injection hpair with hga hgr
     subst hgr
     refine ⟨?_, by omega⟩
     rw [← hga]
     unfold head
-    rw [if_pos (by omega : b.toNat % 32 < 24), ← hbyte (b.toNat % 32) (by omega) rfl]
+    rw [ite_eq_left (by omega : b.toNat % 32 < 24), ← hbyte (b.toNat % 32) (by omega) rfl]
     rfl
-  · rw [if_neg h1] at h
+  · rw [ite_eq_right h1] at h
     by_cases h2 : b.toNat % 32 = 24
-    · rw [if_pos h2] at h
+    · rw [ite_eq_left h2] at h
       cases rest with
       | nil => simp at h
       | cons b0 r' =>
         change (if b0.toNat ≥ 24 then some (b0.toNat, r') else none) = some (arg, r) at h
         by_cases hb0 : b0.toNat ≥ 24
-        · rw [if_pos hb0] at h
+        · rw [ite_eq_left hb0] at h
           injection h with hpair; injection hpair with hga hgr
           subst hgr
           have hb0nd : b0.toNat < 256 := b0.toBitVec.isLt
           refine ⟨?_, by omega⟩
           rw [← hga]
           unfold head
-          rw [if_neg (by omega : ¬b0.toNat < 24), if_pos (by omega : b0.toNat ≤ 255),
+          rw [ite_eq_right (by omega : ¬b0.toNat < 24), ite_eq_left (by omega : b0.toNat ≤ 255),
             show (24 : UInt8) = (24 : Nat).toUInt8 from UInt8.toNat_inj.mp (by decide),
             ← hbyte 24 (by decide) h2,
             show (b0.toNat.toUInt8) = b0 from UInt8.toNat_inj.mp (by
               have e : (b0.toNat.toUInt8).toNat = b0.toNat % 256 := by simp [Nat.toUInt8]
               rw [e, Nat.mod_eq_of_lt hb0nd])]
           rfl
-        · rw [if_neg hb0] at h
+        · rw [ite_eq_right hb0] at h
           simp at h
-    · rw [if_neg h2] at h
+    · rw [ite_eq_right h2] at h
       by_cases h3 : b.toNat % 32 = 25
-      · rw [if_pos h3] at h
+      · rw [ite_eq_left h3] at h
         change (if (rest.splitAt 2).1.length = 2 ∧ readBe (rest.splitAt 2).1 ≥ 2 ^ 8
             then some (readBe (rest.splitAt 2).1, (rest.splitAt 2).2) else none) =
           some (arg, r) at h
         by_cases hc : (rest.splitAt 2).1.length = 2 ∧ readBe (rest.splitAt 2).1 ≥ 2 ^ 8
-        · rw [if_pos hc] at h
+        · rw [ite_eq_left hc] at h
           injection h with hpair; injection hpair with hga hgr
           rw [List.splitAt_eq] at hc
           have hga' : readBe (rest.take 2) = arg := by
@@ -682,23 +682,23 @@ theorem head_sound (b : UInt8) (rest : List UInt8) (mt : Nat) (hmt : b.toNat / 3
             exact h
           refine ⟨?_, by omega⟩
           unfold head
-          rw [if_neg (by omega : ¬readBe (rest.take 2) < 24),
-            if_neg (by omega : ¬readBe (rest.take 2) ≤ 255),
-            if_pos (by omega : readBe (rest.take 2) ≤ 65535), show (25 : UInt8) = (25 : Nat).toUInt8 from UInt8.toNat_inj.mp (by decide),
+          rw [ite_eq_right (by omega : ¬readBe (rest.take 2) < 24),
+            ite_eq_right (by omega : ¬readBe (rest.take 2) ≤ 255),
+            ite_eq_left (by omega : readBe (rest.take 2) ≤ 65535), show (25 : UInt8) = (25 : Nat).toUInt8 from UInt8.toNat_inj.mp (by decide),
             ← hbyte 25 (by decide) h3,
             hbw2]
           show b :: rest = b :: (rest.take 2 ++ rest.drop 2)
           rw [List.take_append_drop]
-        · rw [if_neg hc] at h
+        · rw [ite_eq_right hc] at h
           simp at h
-      · rw [if_neg h3] at h
+      · rw [ite_eq_right h3] at h
         by_cases h4 : b.toNat % 32 = 26
-        · rw [if_pos h4] at h
+        · rw [ite_eq_left h4] at h
           change (if (rest.splitAt 4).1.length = 4 ∧ readBe (rest.splitAt 4).1 ≥ 2 ^ 16
               then some (readBe (rest.splitAt 4).1, (rest.splitAt 4).2) else none) =
             some (arg, r) at h
           by_cases hc : (rest.splitAt 4).1.length = 4 ∧ readBe (rest.splitAt 4).1 ≥ 2 ^ 16
-          · rw [if_pos hc] at h
+          · rw [ite_eq_left hc] at h
             injection h with hpair; injection hpair with hga hgr
             rw [List.splitAt_eq] at hc
             have hw : (rest.take 4).length = 4 := hc.1
@@ -718,25 +718,25 @@ theorem head_sound (b : UInt8) (rest : List UInt8) (mt : Nat) (hmt : b.toNat / 3
               exact h
             refine ⟨?_, by omega⟩
             unfold head
-            rw [if_neg (by omega : ¬readBe (rest.take 4) < 24),
-              if_neg (by omega : ¬readBe (rest.take 4) ≤ 255),
-              if_neg (by omega : ¬readBe (rest.take 4) ≤ 65535),
-              if_pos (by omega : readBe (rest.take 4) ≤ 4294967295),
+            rw [ite_eq_right (by omega : ¬readBe (rest.take 4) < 24),
+              ite_eq_right (by omega : ¬readBe (rest.take 4) ≤ 255),
+              ite_eq_right (by omega : ¬readBe (rest.take 4) ≤ 65535),
+              ite_eq_left (by omega : readBe (rest.take 4) ≤ 4294967295),
               show (26 : UInt8) = (26 : Nat).toUInt8 from UInt8.toNat_inj.mp (by decide),
             ← hbyte 26 (by decide) h4,
               hbw4]
             show b :: rest = b :: (rest.take 4 ++ rest.drop 4)
             rw [List.take_append_drop]
-          · rw [if_neg hc] at h
+          · rw [ite_eq_right hc] at h
             simp at h
-        · rw [if_neg h4] at h
+        · rw [ite_eq_right h4] at h
           by_cases h5 : b.toNat % 32 = 27
-          · rw [if_pos h5] at h
+          · rw [ite_eq_left h5] at h
             change (if (rest.splitAt 8).1.length = 8 ∧ readBe (rest.splitAt 8).1 ≥ 2 ^ 32
                 then some (readBe (rest.splitAt 8).1, (rest.splitAt 8).2) else none) =
               some (arg, r) at h
             by_cases hc : (rest.splitAt 8).1.length = 8 ∧ readBe (rest.splitAt 8).1 ≥ 2 ^ 32
-            · rw [if_pos hc] at h
+            · rw [ite_eq_left hc] at h
               injection h with hpair; injection hpair with hga hgr
               rw [List.splitAt_eq] at hc
               have hw : (rest.take 8).length = 8 := hc.1
@@ -756,18 +756,18 @@ theorem head_sound (b : UInt8) (rest : List UInt8) (mt : Nat) (hmt : b.toNat / 3
                 exact h
               refine ⟨?_, by omega⟩
               unfold head
-              rw [if_neg (by omega : ¬readBe (rest.take 8) < 24),
-                if_neg (by omega : ¬readBe (rest.take 8) ≤ 255),
-                if_neg (by omega : ¬readBe (rest.take 8) ≤ 65535),
-                if_neg (by omega : ¬readBe (rest.take 8) ≤ 4294967295),
+              rw [ite_eq_right (by omega : ¬readBe (rest.take 8) < 24),
+                ite_eq_right (by omega : ¬readBe (rest.take 8) ≤ 255),
+                ite_eq_right (by omega : ¬readBe (rest.take 8) ≤ 65535),
+                ite_eq_right (by omega : ¬readBe (rest.take 8) ≤ 4294967295),
                 show (27 : UInt8) = (27 : Nat).toUInt8 from UInt8.toNat_inj.mp (by decide),
             ← hbyte 27 (by decide) h5,
                 hbw8]
               show b :: rest = b :: (rest.take 8 ++ rest.drop 8)
               rw [List.take_append_drop]
-            · rw [if_neg hc] at h
+            · rw [ite_eq_right hc] at h
               simp at h
-          · rw [if_neg h5] at h
+          · rw [ite_eq_right h5] at h
             simp at h
 
 /-- `decodeItems` reads exactly as many items as asked. -/
@@ -878,39 +878,39 @@ theorem soundAll : ∀ F : Nat,
       | cons b rest =>
         rw [decodeFuel_cons] at h
         by_cases h7 : b.toNat / 32 = 7
-        · rw [if_pos h7] at h
+        · rw [ite_eq_left h7] at h
           by_cases h4 : b.toNat = 0xf4
-          · rw [if_pos h4] at h
+          · rw [ite_eq_left h4] at h
             injection h with hpair; injection hpair with hve hre
             subst hre; subst hve
             have hb : b = 0xf4 := UInt8.toNat_inj.mp h4
             exact ⟨by simp only [Value.wf], by simp only [encode]; rw [hb]; rfl⟩
-          · rw [if_neg h4] at h
+          · rw [ite_eq_right h4] at h
             by_cases h5 : b.toNat = 0xf5
-            · rw [if_pos h5] at h
+            · rw [ite_eq_left h5] at h
               injection h with hpair; injection hpair with hve hre
               subst hre; subst hve
               have hb : b = 0xf5 := UInt8.toNat_inj.mp h5
               exact ⟨by simp only [Value.wf], by simp only [encode]; rw [hb]; rfl⟩
-            · rw [if_neg h5] at h
+            · rw [ite_eq_right h5] at h
               by_cases h6 : b.toNat = 0xf6
-              · rw [if_pos h6] at h
+              · rw [ite_eq_left h6] at h
                 injection h with hpair; injection hpair with hve hre
                 subst hre; subst hve
                 have hb : b = 0xf6 := UInt8.toNat_inj.mp h6
                 exact ⟨by simp only [Value.wf], by simp only [encode]; rw [hb]; rfl⟩
-              · rw [if_neg h6] at h
+              · rw [ite_eq_right h6] at h
                 simp at h
-        · rw [if_neg h7] at h
+        · rw [ite_eq_right h7] at h
           by_cases h6 : b.toNat / 32 = 6
-          · rw [if_pos h6] at h
+          · rw [ite_eq_left h6] at h
             simp at h
-          · rw [if_neg h6] at h
+          · rw [ite_eq_right h6] at h
             split at h
             · simp at h
             · rename_i arg r' hrd
               by_cases h0 : b.toNat / 32 = 0
-              · rw [if_pos h0] at h
+              · rw [ite_eq_left h0] at h
                 injection h with hpair; injection hpair with hve hre
                 obtain ⟨hbs, harg64⟩ := head_sound b rest 0 h0 (by omega) arg r' hrd
                 subst hre; subst hve
@@ -918,9 +918,9 @@ theorem soundAll : ∀ F : Nat,
                 rw [hbs]
                 simp only [encode]
                 rw [UInt64.toNat_ofNat_of_lt' harg64]
-              · rw [if_neg h0] at h
+              · rw [ite_eq_right h0] at h
                 by_cases h1 : b.toNat / 32 = 1
-                · rw [if_pos h1] at h
+                · rw [ite_eq_left h1] at h
                   injection h with hpair; injection hpair with hve hre
                   obtain ⟨hbs, harg64⟩ := head_sound b rest 1 h1 (by omega) arg r' hrd
                   subst hre; subst hve
@@ -928,13 +928,13 @@ theorem soundAll : ∀ F : Nat,
                   rw [hbs]
                   simp only [encode]
                   rw [UInt64.toNat_ofNat_of_lt' harg64]
-                · rw [if_neg h1] at h
+                · rw [ite_eq_right h1] at h
                   by_cases h2 : b.toNat / 32 = 2
-                  · rw [if_pos h2] at h
+                  · rw [ite_eq_left h2] at h
                     by_cases hlt : r'.length < arg
-                    · rw [if_pos hlt] at h
+                    · rw [ite_eq_left hlt] at h
                       simp at h
-                    · rw [if_neg hlt] at h
+                    · rw [ite_eq_right hlt] at h
                       injection h with hpair; injection hpair with hve hre
                       obtain ⟨hbs, harg64⟩ := head_sound b rest 2 h2 (by omega) arg r' hrd
                       subst hve
@@ -947,15 +947,15 @@ theorem soundAll : ∀ F : Nat,
                       · rw [hbs, ← hre]
                         simp only [encode]
                         rw [htk, List.append_assoc, List.take_append_drop]
-                  · rw [if_neg h2] at h
+                  · rw [ite_eq_right h2] at h
                     by_cases h3 : b.toNat / 32 = 3
-                    · rw [if_pos h3] at h
+                    · rw [ite_eq_left h3] at h
                       by_cases hlt : r'.length < arg
-                      · rw [if_pos hlt] at h
+                      · rw [ite_eq_left hlt] at h
                         simp at h
-                      · rw [if_neg hlt] at h
+                      · rw [ite_eq_right hlt] at h
                         by_cases hval : Utf8.valid (r'.take arg) = true
-                        · rw [if_pos hval] at h
+                        · rw [ite_eq_left hval] at h
                           injection h with hpair; injection hpair with hve hre
                           obtain ⟨hbs, harg64⟩ := head_sound b rest 3 h3 (by omega) arg r' hrd
                           subst hve
@@ -967,11 +967,11 @@ theorem soundAll : ∀ F : Nat,
                           · rw [hbs, ← hre]
                             simp only [encode]
                             rw [htk, List.append_assoc, List.take_append_drop]
-                        · rw [if_neg hval] at h
+                        · rw [ite_eq_right hval] at h
                           simp at h
-                    · rw [if_neg h3] at h
+                    · rw [ite_eq_right h3] at h
                       by_cases h4 : b.toNat / 32 = 4
-                      · rw [if_pos h4] at h
+                      · rw [ite_eq_left h4] at h
                         split at h
                         · rename_i _ _ xs r'' hdi
                           injection h with hpair; injection hpair with hve hre
@@ -986,9 +986,9 @@ theorem soundAll : ∀ F : Nat,
                             simp only [encode]
                             rw [hlen, List.append_assoc]
                         · simp at h
-                      · rw [if_neg h4] at h
+                      · rw [ite_eq_right h4] at h
                         by_cases h5 : b.toNat / 32 = 5
-                        · rw [if_pos h5] at h
+                        · rw [ite_eq_left h5] at h
                           split at h
                           · rename_i _ _ kvs r'' hdp
                             injection h with hpair; injection hpair with hve hre
@@ -1003,7 +1003,7 @@ theorem soundAll : ∀ F : Nat,
                               simp only [encode]
                               rw [hlen, List.append_assoc]
                           · simp at h
-                        · rw [if_neg h5] at h
+                        · rw [ite_eq_right h5] at h
                           simp at h
     have hl0 : ∀ n bs xs r, decodeItems (decodeFuel (0 + 1)) n bs = some (xs, r) →
         Value.wfAll xs = true ∧ bs = encodeList xs ++ r := by
@@ -1079,39 +1079,39 @@ theorem soundAll : ∀ F : Nat,
       | cons b rest =>
         rw [decodeFuel_cons] at h
         by_cases h7 : b.toNat / 32 = 7
-        · rw [if_pos h7] at h
+        · rw [ite_eq_left h7] at h
           by_cases h4 : b.toNat = 0xf4
-          · rw [if_pos h4] at h
+          · rw [ite_eq_left h4] at h
             injection h with hpair; injection hpair with hve hre
             subst hre; subst hve
             have hb : b = 0xf4 := UInt8.toNat_inj.mp h4
             exact ⟨by simp only [Value.wf], by simp only [encode]; rw [hb]; rfl⟩
-          · rw [if_neg h4] at h
+          · rw [ite_eq_right h4] at h
             by_cases h5 : b.toNat = 0xf5
-            · rw [if_pos h5] at h
+            · rw [ite_eq_left h5] at h
               injection h with hpair; injection hpair with hve hre
               subst hre; subst hve
               have hb : b = 0xf5 := UInt8.toNat_inj.mp h5
               exact ⟨by simp only [Value.wf], by simp only [encode]; rw [hb]; rfl⟩
-            · rw [if_neg h5] at h
+            · rw [ite_eq_right h5] at h
               by_cases h6 : b.toNat = 0xf6
-              · rw [if_pos h6] at h
+              · rw [ite_eq_left h6] at h
                 injection h with hpair; injection hpair with hve hre
                 subst hre; subst hve
                 have hb : b = 0xf6 := UInt8.toNat_inj.mp h6
                 exact ⟨by simp only [Value.wf], by simp only [encode]; rw [hb]; rfl⟩
-              · rw [if_neg h6] at h
+              · rw [ite_eq_right h6] at h
                 simp at h
-        · rw [if_neg h7] at h
+        · rw [ite_eq_right h7] at h
           by_cases h6 : b.toNat / 32 = 6
-          · rw [if_pos h6] at h
+          · rw [ite_eq_left h6] at h
             simp at h
-          · rw [if_neg h6] at h
+          · rw [ite_eq_right h6] at h
             split at h
             · simp at h
             · rename_i arg r' hrd
               by_cases h0 : b.toNat / 32 = 0
-              · rw [if_pos h0] at h
+              · rw [ite_eq_left h0] at h
                 injection h with hpair; injection hpair with hve hre
                 obtain ⟨hbs, harg64⟩ := head_sound b rest 0 h0 (by omega) arg r' hrd
                 subst hre; subst hve
@@ -1119,9 +1119,9 @@ theorem soundAll : ∀ F : Nat,
                 rw [hbs]
                 simp only [encode]
                 rw [UInt64.toNat_ofNat_of_lt' harg64]
-              · rw [if_neg h0] at h
+              · rw [ite_eq_right h0] at h
                 by_cases h1 : b.toNat / 32 = 1
-                · rw [if_pos h1] at h
+                · rw [ite_eq_left h1] at h
                   injection h with hpair; injection hpair with hve hre
                   obtain ⟨hbs, harg64⟩ := head_sound b rest 1 h1 (by omega) arg r' hrd
                   subst hre; subst hve
@@ -1129,13 +1129,13 @@ theorem soundAll : ∀ F : Nat,
                   rw [hbs]
                   simp only [encode]
                   rw [UInt64.toNat_ofNat_of_lt' harg64]
-                · rw [if_neg h1] at h
+                · rw [ite_eq_right h1] at h
                   by_cases h2 : b.toNat / 32 = 2
-                  · rw [if_pos h2] at h
+                  · rw [ite_eq_left h2] at h
                     by_cases hlt : r'.length < arg
-                    · rw [if_pos hlt] at h
+                    · rw [ite_eq_left hlt] at h
                       simp at h
-                    · rw [if_neg hlt] at h
+                    · rw [ite_eq_right hlt] at h
                       injection h with hpair; injection hpair with hve hre
                       obtain ⟨hbs, harg64⟩ := head_sound b rest 2 h2 (by omega) arg r' hrd
                       subst hve
@@ -1148,15 +1148,15 @@ theorem soundAll : ∀ F : Nat,
                       · rw [hbs, ← hre]
                         simp only [encode]
                         rw [htk, List.append_assoc, List.take_append_drop]
-                  · rw [if_neg h2] at h
+                  · rw [ite_eq_right h2] at h
                     by_cases h3 : b.toNat / 32 = 3
-                    · rw [if_pos h3] at h
+                    · rw [ite_eq_left h3] at h
                       by_cases hlt : r'.length < arg
-                      · rw [if_pos hlt] at h
+                      · rw [ite_eq_left hlt] at h
                         simp at h
-                      · rw [if_neg hlt] at h
+                      · rw [ite_eq_right hlt] at h
                         by_cases hval : Utf8.valid (r'.take arg) = true
-                        · rw [if_pos hval] at h
+                        · rw [ite_eq_left hval] at h
                           injection h with hpair; injection hpair with hve hre
                           obtain ⟨hbs, harg64⟩ := head_sound b rest 3 h3 (by omega) arg r' hrd
                           subst hve
@@ -1168,11 +1168,11 @@ theorem soundAll : ∀ F : Nat,
                           · rw [hbs, ← hre]
                             simp only [encode]
                             rw [htk, List.append_assoc, List.take_append_drop]
-                        · rw [if_neg hval] at h
+                        · rw [ite_eq_right hval] at h
                           simp at h
-                    · rw [if_neg h3] at h
+                    · rw [ite_eq_right h3] at h
                       by_cases h4 : b.toNat / 32 = 4
-                      · rw [if_pos h4] at h
+                      · rw [ite_eq_left h4] at h
                         split at h
                         · rename_i _ _ xs r'' hdi
                           injection h with hpair; injection hpair with hve hre
@@ -1187,9 +1187,9 @@ theorem soundAll : ∀ F : Nat,
                             simp only [encode]
                             rw [hlen, List.append_assoc]
                         · simp at h
-                      · rw [if_neg h4] at h
+                      · rw [ite_eq_right h4] at h
                         by_cases h5 : b.toNat / 32 = 5
-                        · rw [if_pos h5] at h
+                        · rw [ite_eq_left h5] at h
                           split at h
                           · rename_i _ _ kvs r'' hdp
                             injection h with hpair; injection hpair with hve hre
@@ -1204,7 +1204,7 @@ theorem soundAll : ∀ F : Nat,
                               simp only [encode]
                               rw [hlen, List.append_assoc]
                           · simp at h
-                        · rw [if_neg h5] at h
+                        · rw [ite_eq_right h5] at h
                           simp at h
     have hl : ∀ n bs xs r, decodeItems (decodeFuel (F + 1 + 1)) n bs = some (xs, r) →
         Value.wfAll xs = true ∧ bs = encodeList xs ++ r := by
