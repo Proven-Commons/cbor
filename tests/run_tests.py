@@ -192,6 +192,26 @@ def ref_canonical(v):
     return {"false": "false", "true": "true", "null": "null"}[t]
 
 
+# The rows of RFC 3629, section 4 (Unicode Table 3-7): the code points
+# each row encodes, and its byte ranges, one per byte.
+UTF8_ROW_SCALARS = [
+    (0x0000, 0x007F), (0x0080, 0x07FF), (0x0800, 0x0FFF), (0x1000, 0xCFFF),
+    (0xD000, 0xD7FF), (0xE000, 0xFFFF), (0x10000, 0x3FFFF),
+    (0x40000, 0xFFFFF), (0x100000, 0x10FFFF),
+]
+UTF8_ROW_BYTES = [
+    [(0x00, 0x7F)],
+    [(0xC2, 0xDF), (0x80, 0xBF)],
+    [(0xE0, 0xE0), (0xA0, 0xBF), (0x80, 0xBF)],
+    [(0xE1, 0xEC), (0x80, 0xBF), (0x80, 0xBF)],
+    [(0xED, 0xED), (0x80, 0x9F), (0x80, 0xBF)],
+    [(0xEE, 0xEF), (0x80, 0xBF), (0x80, 0xBF)],
+    [(0xF0, 0xF0), (0x90, 0xBF), (0x80, 0xBF), (0x80, 0xBF)],
+    [(0xF1, 0xF3), (0x80, 0xBF), (0x80, 0xBF), (0x80, 0xBF)],
+    [(0xF4, 0xF4), (0x80, 0x8F), (0x80, 0xBF), (0x80, 0xBF)],
+]
+
+
 # ---------- Lean process driver ----------
 
 class LeanDriver:
@@ -262,6 +282,13 @@ def main():
 
     rng = random.Random(SEED)
 
+    def rand_scalar():
+        """A Unicode scalar value from a random row of RFC 3629's
+        grammar (Unicode Table 3-7), often at a row's first or last
+        code point."""
+        lo, hi = rng.choice(UTF8_ROW_SCALARS)
+        return rng.choice([lo, hi, rng.randrange(lo, hi + 1)])
+
     # Random generated in-slice items: encode with the reference, then
     # compare decode + re-encode.
     def gen(depth):
@@ -281,11 +308,7 @@ def main():
                                    for _ in range(rng.randrange(0, 10))))
         if t == "text":
             n = rng.randrange(0, 6)
-            cps = []
-            for _ in range(n):
-                cps.append(rng.choice([0x41, 0x61, 0x7f, 0x80, 0x7ff, 0x800,
-                                       0xfffd, 0x10000, 0x10ffff,
-                                       rng.randrange(0x20, 0x7f)]))
+            cps = [rand_scalar() for _ in range(n)]
             return ("text", "".join(chr(c) for c in cps).encode("utf-8"))
         if t == "array":
             return ("array", [gen(depth + 1) for _ in range(rng.randrange(0, 5))])
@@ -341,6 +364,34 @@ def main():
         hdr = ref_head(3, len(p))
         check(f"utf8 reject {p.hex()}", drv.ask("d", (hdr + p).hex()) == "error")
         rejected += 1
+
+    # Each row of the UTF-8 grammar: byte sequences built from the row's
+    # ranges, with some bytes moved just outside their range, alone or
+    # between other characters. The oracle is Python's strict UTF-8
+    # decoder, which follows RFC 3629.
+    for row_i, row in enumerate(UTF8_ROW_BYTES):
+        for i in range(150):
+            seq = []
+            for lo, hi in row:
+                seq.append(rng.choice([lo, hi, rng.randrange(lo, hi + 1),
+                                       rng.randrange(lo, hi + 1),
+                                       max(lo - 1, 0), min(hi + 1, 255),
+                                       rng.randrange(256)]))
+            if i % 3 == 1:
+                seq = seq[:rng.randrange(len(seq) + 1)]
+            if i % 3 == 2:
+                seq = (list(chr(rand_scalar()).encode("utf-8")) + seq
+                       + list(chr(rand_scalar()).encode("utf-8")))
+            p = bytes(seq)
+            enc = ref_head(3, len(p)) + p
+            want = ref_full(list(enc))
+            got = drv.ask("d", enc.hex())
+            check(f"utf8 row {row_i} {i}", got == (want or "error"),
+                  f"{enc.hex()}: want {want or 'error'}, got {got}")
+            if want is None:
+                rejected += 1
+            else:
+                accepted += 1
 
     # Leftover bytes after a complete item: turned away.
     check("trailing", drv.ask("d", "0102") == "error")

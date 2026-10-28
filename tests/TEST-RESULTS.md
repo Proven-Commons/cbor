@@ -3,12 +3,12 @@
 Run by `tests/run_tests.py` against an independent Python implementation of
 the slice written from RFC 8949, in the same file, and against the RFC 8949
 Appendix A vectors.
-Lean: Lean 4.35.0. Python: 3.10.12.
+Lean: Lean 4.35.0. Python: 3.13.17.
 
 - Seed: 20261025
-- Byte inputs fed to the Lean codec: 2060
-- Checks run: 2060
-- Checks passed: 2060
+- Byte inputs fed to the Lean codec: 3435
+- Checks run: 3435
+- Checks passed: 3435
 - Failures: 0
 - Accepted inputs: generated well-formed items, their random-garbage
   counterparts that parse, and the in-slice RFC 8949 Appendix A rows.

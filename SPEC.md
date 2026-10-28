@@ -18,6 +18,10 @@ RFC 8949, definite-length items only, in preferred (shortest) form
 - Major type 2: byte strings, definite length.
 - Major type 3: text strings, definite length, payload required to be
   well-formed UTF-8 (RFC 3629, as section 3.1 of RFC 8949 asks).
+  `Spec.Utf8.wellFormed` in `Spec/Utf8.lean` writes the grammar of
+  RFC 3629, section 4: its nine rows of byte ranges, and a split of the
+  payload into characters that each match a row. Each row has examples
+  there, checked by the build.
 - Major type 4: arrays, definite length.
 - Major type 5: maps, definite length.
 - Major type 7, added information 20, 21, 22: `false`, `true`, `null`.
@@ -26,6 +30,14 @@ Out of slice, always turned away: tags (major type 6), indefinite-length
 items and break (added information 31), reserved added information 28 to
 30, `undefined`, other simple values, half, single, and double floats,
 and any argument not in preferred form.
+
+## Well-formed items
+
+`Value` in `Spec/Value.lean` is the item type: one constructor for each
+kind of item in the slice. `Value.wf` says when an item can be sent:
+every text payload is well-formed UTF-8 (`Spec.Utf8.wellFormed`), and
+every string and container length is below 2^64, so it fits the 64-bit
+argument. Both are spec files, so the approval covers them.
 
 ## Encoding
 
@@ -51,13 +63,14 @@ same names in `Proofs/`, and the build fails if any proof breaks.
 |----------|---------|
 | Decoding an encoding returns the same item | `Spec.cbor_decode_encode` |
 | The decoder accepts a byte list exactly when it is the encoding of a well-formed item, and returns that item | `Spec.cbor_encode_decode` |
+| The decoder's UTF-8 check is the RFC 3629 grammar, on every byte list | `Spec.cbor_utf8_valid_eq` |
 | Reserved and indefinite added information is turned away | `Spec.cbor_rejects_reserved_ai` |
 | Tags are turned away | `Spec.cbor_rejects_tags` |
 | Other major type 7 values are turned away | `Spec.cbor_rejects_simple` |
 | The in-slice RFC 8949 Appendix A vectors hold, both directions | `Spec.cbor_rfc8949_vectors` |
 | Out-of-slice Appendix A rows are turned away | `Spec.cbor_rejects_out_of_slice` |
 | Non-preferred arguments are turned away | `Spec.cbor_rejects_nonpreferred` |
-| Text that is not well-formed UTF-8 is turned away | `Spec.cbor_rejects_bad_utf8` |
+| Five example text items with bad UTF-8 are turned away | `Spec.cbor_rejects_bad_utf8` |
 | Input that ends inside an item is turned away | `Spec.cbor_rejects_truncation` |
 
 `Spec.cbor_encode_decode` is an if and only if: `decode bs = some v`

@@ -4,6 +4,7 @@
 
 import Cbor
 import Spec.Defs
+import Proofs.Utf8
 
 open Cbor
 
@@ -476,7 +477,8 @@ theorem rtAll : ∀ F : Nat,
           List.nil_append]
       | text bs =>
         simp only [Value.wf, Bool.and_eq_true] at hwf
-        obtain ⟨hval, hlen⟩ := hwf
+        obtain ⟨hwfu, hlen⟩ := hwf
+        have hval : Utf8.valid bs = true := by rw [Utf8.valid_eq_wellFormed]; exact hwfu
         have hlen' : bs.length < 2 ^ 64 := of_decide_eq_true hlen
         simp only [encode]
         rw [List.append_assoc,
@@ -963,7 +965,8 @@ theorem soundAll : ∀ F : Nat,
                             rw [List.length_take]; omega
                           refine ⟨?_, ?_⟩
                           · simp only [Value.wf, Bool.and_eq_true]
-                            refine ⟨hval, by rw [htk]; exact decide_eq_true harg64⟩
+                            refine ⟨by rw [← Utf8.valid_eq_wellFormed]; exact hval,
+                              by rw [htk]; exact decide_eq_true harg64⟩
                           · rw [hbs, ← hre]
                             simp only [encode]
                             rw [htk, List.append_assoc, List.take_append_drop]
@@ -1164,7 +1167,8 @@ theorem soundAll : ∀ F : Nat,
                             rw [List.length_take]; omega
                           refine ⟨?_, ?_⟩
                           · simp only [Value.wf, Bool.and_eq_true]
-                            refine ⟨hval, by rw [htk]; exact decide_eq_true harg64⟩
+                            refine ⟨by rw [← Utf8.valid_eq_wellFormed]; exact hval,
+                              by rw [htk]; exact decide_eq_true harg64⟩
                           · rw [hbs, ← hre]
                             simp only [encode]
                             rw [htk, List.append_assoc, List.take_append_drop]

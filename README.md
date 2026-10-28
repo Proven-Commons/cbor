@@ -34,7 +34,12 @@ The round-trip theorems, in `Proofs/RoundTrip.lean`:
 - `Spec.cbor_encode_decode`: the decoder accepts bytes `bs` and returns
   the item `v` if and only if `v` is well-formed (`Value.wf`) and `bs`
   is the encoding of `v`. So it accepts exactly the encodings of the
-  well-formed items, and nothing else.
+  well-formed items, and nothing else. The item type `Value` and
+  `Value.wf` are in `Spec/Value.lean`, a spec file.
+- `Spec.cbor_utf8_valid_eq`: the decoder's UTF-8 check, `Utf8.valid`,
+  gives the same answer on every byte list as `Spec.Utf8.wellFormed`,
+  the grammar of RFC 3629, section 4, written in `Spec/Utf8.lean`.
+  `Value.wf` uses that grammar for text payloads.
 
 The rejection theorems, in `Proofs/Cbor.lean`:
 
@@ -49,8 +54,10 @@ The rejection theorems, in `Proofs/Cbor.lean`:
   are turned away.
 - `Spec.cbor_rejects_nonpreferred`: a value that fits in fewer bytes
   must not use a longer form.
-- `Spec.cbor_rejects_bad_utf8`: text payloads that are not well-formed
-  UTF-8 are turned away.
+- `Spec.cbor_rejects_bad_utf8`: five example text items whose payloads
+  are not well-formed UTF-8 are turned away. For every payload, this
+  follows from `Spec.cbor_encode_decode`, since `Value.wf` asks for
+  well-formed UTF-8.
 - `Spec.cbor_rejects_truncation`: input that ends inside an item is
   turned away.
 

@@ -1,8 +1,8 @@
 /-
-  The CBOR item type, the encoder, and the decoder, for the first
-  slice of RFC 8949: definite length unsigned and negative integers,
-  byte strings, text strings, arrays, and maps, with the simple values
-  false, true, and null.
+  The encoder and the decoder, for the first slice of RFC 8949:
+  definite length unsigned and negative integers, byte strings, text
+  strings, arrays, and maps, with the simple values false, true, and
+  null.
 
   The decoder is strict. It accepts only the preferred form of each
   argument (RFC 8949, section 4.2.1): an argument that fits in fewer
@@ -13,54 +13,17 @@
 
   A text item holds its UTF-8 payload bytes. Converting those bytes to
   and from a string happens at the edges, outside this slice.
+
+  The item type `Value` and its well-formedness `Value.wf` are part of
+  the specification, in `Spec/Value.lean`, so the approval covers them.
 -/
 
 import Cbor.Utf8
+import Spec.Value
 
 namespace Cbor
 
-/-- One CBOR data item, in the slice. -/
-inductive Value where
-  /-- Unsigned integer, major type 0. -/
-  | uint (n : UInt64)
-  /-- Negative integer, major type 1: the integer -1 - n. -/
-  | nint (n : UInt64)
-  /-- Byte string, major type 2. -/
-  | bytes (bs : List UInt8)
-  /-- Text string, major type 3, held as its UTF-8 payload bytes. -/
-  | text (bs : List UInt8)
-  /-- Array, major type 4. -/
-  | array (xs : List Value)
-  /-- Map, major type 5: a list of key and value pairs. -/
-  | map (kvs : List (Value × Value))
-  | vfalse | vtrue | vnull
-
-
-/-! ## Well-formedness and depth -/
-
-mutual
-/-- Does an item fit on the wire in this slice: every text payload is
-    well-formed UTF-8, and every string and container length fits in
-    64 bits. Any item small enough to exist in memory passes. -/
-def Value.wf : Value → Bool
-  | .uint _ => Bool.true
-  | .nint _ => Bool.true
-  | .bytes bs => bs.length < 2 ^ 64
-  | .text bs => Utf8.valid bs && (bs.length < 2 ^ 64)
-  | .array xs => xs.length < 2 ^ 64 && Value.wfAll xs
-  | .map kvs => kvs.length < 2 ^ 64 && Value.wfPairs kvs
-  | .vfalse => Bool.true
-  | .vtrue => Bool.true
-  | .vnull => Bool.true
-
-def Value.wfAll : List Value → Bool
-  | [] => true
-  | x :: xs => x.wf && Value.wfAll xs
-
-def Value.wfPairs : List (Value × Value) → Bool
-  | [] => true
-  | (k, v) :: kvs => k.wf && v.wf && Value.wfPairs kvs
-end
+/-! ## Depth -/
 
 mutual
 /-- The nesting depth of an item: a leaf is 1, and a container is one

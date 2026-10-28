@@ -14,12 +14,14 @@ spec_authors = ["ahrazzle", "zero-aska"]
 entry_points = ["Main.lean"]
 
 [spec]
-files = ["SPEC.md", "Spec.lean", "Spec/Defs.lean"]
-# The code under proof: the functions the statements are about.
+files = ["SPEC.md", "Spec.lean", "Spec/Defs.lean", "Spec/Value.lean", "Spec/Utf8.lean"]
+# The code under proof: the functions the statements are about. The item
+# type and Value.wf only give the statements their meaning, so they are
+# in the spec files above, not here.
 code = [
   "Cbor.encode", "Cbor.encodeList", "Cbor.encodePairs",
   "Cbor.decode", "Cbor.decodeFuel", "Cbor.decodeItems", "Cbor.decodePairs",
-  "Cbor.head", "Cbor.readArg", "Cbor.Value.wf",
+  "Cbor.head", "Cbor.readArg", "Cbor.Utf8.valid",
 ]
 
 # One entry per approval, added in a pull request the reviewer approves.

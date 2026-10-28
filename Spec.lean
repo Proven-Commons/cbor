@@ -5,8 +5,10 @@
   records the hash it had then. The proofs live in `Proofs.lean`, under
   the same names. The `sorry` below is expected in this file only.
 
-  The pinned checks for the UTF-8 validator are in `Spec/Defs.lean`,
-  which is part of the specification too.
+  The definitions the statements use besides the code are in
+  `Spec/Defs.lean`, `Spec/Value.lean` (the item type and `Value.wf`)
+  and `Spec/Utf8.lean` (well-formed UTF-8, from RFC 3629). They are
+  part of the specification too.
 -/
 
 import Cbor
@@ -26,6 +28,15 @@ theorem Spec.cbor_decode_encode (v : Value) (h : v.wf = true) :
     well-formed (`Value.wf`) and `bs` is the encoding of `v`. -/
 theorem Spec.cbor_encode_decode (bs : List UInt8) (v : Value) :
     decode bs = some v ↔ v.wf = true ∧ encode v = bs := sorry
+
+/-! ## Text strings: the UTF-8 check is RFC 3629
+
+`Value.wf` asks every text payload to be `Spec.Utf8.wellFormed`, the
+grammar of RFC 3629, section 4. The decoder checks text payloads with
+`Utf8.valid`; this says the two agree on every byte list. -/
+
+theorem Spec.cbor_utf8_valid_eq (bs : List UInt8) :
+    Cbor.Utf8.valid bs = Spec.Utf8.wellFormed bs := sorry
 
 /-! ## Added information the RFC holds back, and the indefinite form -/
 
