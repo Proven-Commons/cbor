@@ -148,4 +148,8 @@ python3 tests/run_tests.py
 named in `comparator.json` proves exactly the statement in `Spec.lean`,
 uses only the three standard axioms, and passes every kernel. The test
 script builds the tool if needed, runs every input against the oracle,
-and rewrites `tests/TEST-RESULTS.md`.
+and rewrites `tests/TEST-RESULTS.md`. Where Python's cbor2 can be
+imported, the script also has cbor2, a CBOR library written apart from
+this project, judge the tool's answers, counted apart from the
+record's inputs. The record says whether that ran, with which version,
+and how to install it.

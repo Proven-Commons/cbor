@@ -3,7 +3,9 @@
 
 Compares the Lean implementation against an independent Python
 implementation of the slice (below), and against the RFC 8949
-Appendix A vectors. Run from anywhere:
+Appendix A vectors. Where the cbor2 library can be imported, it also
+has cbor2 judge the tool's answers, counted apart (see
+`cbor2_cross_check`). Run from anywhere:
 
     python3 tests/run_tests.py
 
@@ -11,9 +13,12 @@ It builds the Lean project if the executable is missing, runs all
 cases, writes `tests/TEST-RESULTS.md`, and exits non-zero on failure.
 """
 
+import itertools
 import random
 import subprocess
 import sys
+import textwrap
+import threading
 from pathlib import Path
 
 PILOT_DIR = Path(__file__).resolve().parent.parent
@@ -232,6 +237,23 @@ class LeanDriver:
         self.proc.stdin.flush()
         return self.proc.stdout.readline().rstrip("\n")
 
+    def ask_many(self, reqs):
+        """Send many (op, hex) requests and read the answers in order.
+        Used by the cbor2 cross-check, whose inputs are not counted in
+        Inputs."""
+        answers = []
+        for i in range(0, len(reqs), 2000):
+            chunk = reqs[i:i + 2000]
+
+            def write():
+                self.proc.stdin.write("".join(f"{op} {h}\n" for op, h in chunk))
+                self.proc.stdin.flush()
+            w = threading.Thread(target=write)
+            w.start()
+            answers += [self.proc.stdout.readline().rstrip("\n") for _ in chunk]
+            w.join()
+        return answers
+
 
 # ---------- RFC 8949 Appendix A vectors ----------
 
@@ -312,6 +334,199 @@ def completion(b):
     if ai == 31:
         return bytes([0xff])
     return b""
+
+
+# ---------- Cross-check against cbor2, when it can be imported ----------
+# cbor2 (https://github.com/agronholm/cbor2) is a CBOR library for
+# Python written apart from this project, and the oracle the plan in
+# issue #1 named. CI installs nothing beyond Python's standard library,
+# so the record's oracle is the reference codec above, and this
+# cross-check runs only where cbor2 can be imported. Its inputs are
+# counted apart, not in Inputs, so a run with or without cbor2 records
+# the same Inputs. A disagreement is a failure.
+
+CBOR2_PIN = "6.1.5"
+
+
+class OutsideSlice(Exception):
+    pass
+
+
+def cbor2_text(o):
+    """The tool's canonical text for a value cbor2 returned, or
+    OutsideSlice when the value is of a kind the slice does not carry
+    (a float, a tag cbor2 kept or turned into another type, undefined,
+    another simple value, or an integer outside -2^64 to 2^64 - 1)."""
+    from collections.abc import Mapping
+    if o is False:
+        return "false"
+    if o is True:
+        return "true"
+    if o is None:
+        return "null"
+    if type(o) is int:
+        if -2**64 <= o < 2**64:
+            return str(o)
+        raise OutsideSlice
+    if type(o) is bytes:
+        return "h'" + o.hex() + "'"
+    if type(o) is str:
+        return "t'" + o.encode("utf-8").hex() + "'"
+    if type(o) in (list, tuple):
+        return "[" + ",".join(cbor2_text(x) for x in o) + "]"
+    if isinstance(o, Mapping):
+        return "{" + ",".join(cbor2_text(k) + ":" + cbor2_text(v)
+                              for k, v in o.items()) + "}"
+    raise OutsideSlice
+
+
+def cbor2_cross_check(drv):
+    """Has cbor2 judge the tool's answers. Returns (None, reason) when
+    cbor2 cannot be imported or lacks the option the judge needs, else
+    (cbor2's version and the counts, None).
+
+    cbor2 accepts an input when `cbor2.loads` reads it, every value in
+    it is of a kind the slice carries, and `cbor2.dumps` writes the
+    same bytes back. That last step turns away what cbor2 reads but the
+    slice does not: arguments not in preferred form, indefinite
+    lengths, tags that come back as plain values, and bytes after the
+    item. The tool's `d` answer must be the canonical text of cbor2's
+    value, or `error`; for each input cbor2 accepts, the `r` answer must
+    be the input. An input is left out when cbor2 reads it, writes other
+    bytes back, and a map in it holds two keys that are equal as Python
+    values (the same key twice, or 1 and true, or 0 and false): cbor2
+    keeps one pair of those, and the slice keeps every pair."""
+    try:
+        import cbor2
+        from importlib.metadata import version
+        ver = version("cbor2")
+    except Exception:
+        return None, "cbor2 could not be imported"
+    try:
+        cbor2.loads(b"\xa0", allow_duplicate_keys=False)
+    except TypeError:
+        return None, f"cbor2 {ver} has no allow_duplicate_keys option"
+
+    def judge(bs):
+        try:
+            o = cbor2.loads(bs)
+        except Exception:
+            return "error"
+        try:
+            text = cbor2_text(o)
+        except OutsideSlice:
+            return "error"
+        if cbor2.dumps(o) == bs:
+            return text
+        try:
+            cbor2.loads(bs, allow_duplicate_keys=False)
+        except Exception:
+            return None  # keys equal as Python values: left out
+        return "error"
+
+    rng = random.Random(SEED)
+
+    def rand_value(depth):
+        kind = rng.randrange(9 if depth < 3 else 6)
+        if kind == 0:
+            return rng.choice([0, 1, 23, 24, 255, 256, 65535, 65536, 2**32 - 1,
+                               2**32, 2**64 - 1, rng.randrange(2**64)])
+        if kind == 1:
+            return -1 - rng.choice([0, 23, 24, 255, 256, 65535, 2**32,
+                                    2**64 - 1, rng.randrange(2**64)])
+        if kind == 2:
+            return bytes(rng.randrange(256)
+                         for _ in range(rng.choice([0, 1, 5, 23, 24, 30, 256])))
+        if kind == 3:
+            chars = []
+            for _ in range(rng.randrange(0, 12)):
+                lo, hi = rng.choice(UTF8_ROW_SCALARS)
+                chars.append(chr(rng.randrange(lo, hi + 1)))
+            return "".join(chars)
+        if kind == 4:
+            return rng.choice([False, True, None])
+        if kind == 5:
+            return rng.randrange(-1000, 1000)
+        if kind in (6, 7):
+            return [rand_value(depth + 1)
+                    for _ in range(rng.choice([0, 1, 2, 3, 24, 25]))]
+        keys = [rng.choice([rng.randrange(2**32), rng.randrange(-30, 30),
+                            str(rng.randrange(100)), bytes([rng.randrange(256)]),
+                            False, True, None,
+                            tuple(rng.randrange(5) for _ in range(rng.randrange(3)))])
+                for _ in range(rng.randrange(0, 5))]
+        return {k: rand_value(depth + 1) for k in keys}
+
+    def mutate(e):
+        m = bytearray(e)
+        op = rng.randrange(5)
+        if op == 0 and m:
+            m[rng.randrange(len(m))] = rng.randrange(256)
+        elif op == 1:
+            m.insert(rng.randrange(len(m) + 1), rng.randrange(256))
+        elif op == 2 and m:
+            del m[rng.randrange(len(m))]
+        elif op == 3 and m:
+            m[rng.randrange(len(m))] ^= 1 << rng.randrange(8)
+        elif m:
+            del m[rng.randrange(len(m)):]
+        return bytes(m)
+
+    parts = []
+    parts.append(("All inputs of 0, 1 or 2 bytes",
+                  [bytes(t) for n in range(3)
+                   for t in itertools.product(range(256), repeat=n)]))
+    parts.append(("RFC 8949 Appendix A, all 81 rows",
+                  [bytes.fromhex(h) for h, _ in RFC_OK]
+                  + [bytes.fromhex(h) for h in RFC_A_OUT]))
+    parts.append(("Random bytes, 3 to 9 long",
+                  [bytes(rng.randrange(256) for _ in range(rng.randrange(3, 10)))
+                   for _ in range(30000)]))
+    parts.append(("Text items with 1 to 4 payload bytes, each random or "
+                  "from 80 to bf",
+                  [bytes([0x60 + k]) + bytes(rng.choice([rng.randrange(256),
+                                                         rng.randrange(0x80, 0xC0)])
+                                             for _ in range(k))
+                   for k in (rng.randrange(1, 5) for _ in range(10000))]))
+    written = []
+    for _ in range(5000):
+        e = cbor2.dumps(rand_value(0))
+        written.append(e)
+        written += [mutate(e) for _ in range(3)]
+    parts.append(("Random values written by cbor2.dumps, and 3 mutations "
+                  "of each", written))
+
+    rows = []
+    totals = {"requests": 0, "accepted": 0, "refused": 0, "left out": 0}
+    failures_before = len(failures)
+    for name, items in parts:
+        reqs, wants, labels = [], [], []
+        acc = ref = left = 0
+        for bs in items:
+            want = judge(bs)
+            if want is None:
+                left += 1
+                continue
+            reqs.append(("d", bs.hex()))
+            wants.append(want)
+            labels.append(f"cbor2 d {bs.hex()}")
+            if want == "error":
+                ref += 1
+            else:
+                acc += 1
+                reqs.append(("r", bs.hex()))
+                wants.append(bs.hex())
+                labels.append(f"cbor2 r {bs.hex()}")
+        got = drv.ask_many(reqs)
+        for label, want, answer in zip(labels, wants, got):
+            check(label, answer == want, f"cbor2 says {want}, the tool {answer}")
+        rows.append((name, len(reqs), acc, ref, left))
+        totals["requests"] += len(reqs)
+        totals["accepted"] += acc
+        totals["refused"] += ref
+        totals["left out"] += left
+    totals["disagreements"] = len(failures) - failures_before
+    return {"version": ver, "rows": rows, "totals": totals}, None
 
 
 def main():
@@ -487,6 +702,40 @@ def main():
     check("trailing", drv.ask("d", "0102") == "error")
     check("empty", drv.ask("d", "") == "error")
 
+    cross, why_not = cbor2_cross_check(drv)
+    if cross is None:
+        oracle_note = f"; the cbor2 cross-check did not run ({why_not})"
+        cross_text = textwrap.fill(
+            f"In this run {why_not}, so the cross-check did not run. To run "
+            f"it, install cbor2 {CBOR2_PIN}, the version the committed "
+            "record used, where the script can import it. For example:", 72)
+        cross_text += f"""
+
+    python3 -m venv /tmp/cbor2-venv
+    /tmp/cbor2-venv/bin/pip install cbor2=={CBOR2_PIN}
+    /tmp/cbor2-venv/bin/python tests/run_tests.py
+"""
+    else:
+        oracle_note = f"; cross-checked against cbor2 {cross['version']}, counted apart"
+        t = cross["totals"]
+        part_lines = "\n".join(
+            f"  - {name}: {n} requests; cbor2 accepted {acc} inputs, "
+            f"refused {ref}" + (f", left out {left}" if left else "")
+            for name, n, acc, ref, left in cross["rows"])
+        version_note = ("" if cross["version"] == CBOR2_PIN else
+                        f" This is not cbor2 {CBOR2_PIN}, the version the "
+                        "committed record used.")
+        cross_text = textwrap.fill(
+            f"In this run cbor2 {cross['version']} could be imported, and the "
+            f"cross-check ran.{version_note} The requests by part, where "
+            "each input cbor2 accepts is asked twice, `d` and `r`:", 72)
+        cross_text += "\n\n" + part_lines + "\n\n" + textwrap.fill(
+            f"In all: {t['requests']} requests, from {t['accepted']} inputs "
+            f"cbor2 accepted and {t['refused']} it refused, with "
+            f"{t['disagreements']} disagreements. {t['left out']} inputs were "
+            "left out because a map in them holds two keys that are equal "
+            "as Python values.", 72) + "\n"
+
     # The build is part of the check: lake build already ran if needed.
     total = checks
     ok = total - len(failures)
@@ -498,7 +747,7 @@ Written by `python3 tests/run_tests.py`, which feeds each input to the
 command-line tool built from the proved code (`.lake/build/bin/cbor`)
 and compares its answer with the oracle's.
 
-- Oracle: reference codec in `tests/run_tests.py`, on Python {sys.version.split()[0]}
+- Oracle: reference codec in `tests/run_tests.py`, on Python {sys.version.split()[0]}{oracle_note}
 - Seed: {SEED}
 - Inputs: {inputs}
 - Failures: {len(failures)}{failed}
@@ -518,14 +767,37 @@ turned away, in both directions. None is skipped. It also runs 17 other
 shapes outside the slice: simple(24), more tags and indefinite items,
 break on its own, and reserved additional information.
 
-The plan in issue #1 named Python cbor2 as the oracle. This script uses
-its own reference implementation instead, so that it needs nothing
-outside Python's standard library.
-
 Each input is one request to the tool: `d` (decode) or `r` (decode and
 encode again). This script does not check proofs or axioms; `lake
 comparator --paranoid` does.
-""")
+
+## Cross-check against cbor2
+
+The plan in issue #1 named Python cbor2 as the oracle. The record's
+oracle is the reference codec above instead, so that CI, which installs
+nothing beyond Python's standard library, reruns the same inputs and
+gets the same numbers. The reference codec is written apart from the
+Lean code, but by the same project. So where cbor2, a CBOR library
+written apart from this project, can be imported, the script also has
+cbor2 judge the tool's answers. Those requests are counted apart, not
+in Inputs, so a run with or without cbor2 records the same Inputs. A
+disagreement is a failure, listed under Failures above.
+
+cbor2 accepts an input when `cbor2.loads` reads it, every value in it
+is of a kind the slice carries (false, true, null, an integer from
+-2^64 to 2^64 - 1, a byte or text string, an array, a map), and
+`cbor2.dumps` writes the same bytes back. That last step turns away
+what cbor2 reads but the slice does not: arguments not in preferred
+form, indefinite lengths, tags that come back as plain values, and
+bytes after the item. The tool's `d` answer must be the canonical text
+of cbor2's value, or `error` when cbor2 does not accept; for an input
+cbor2 accepts, the `r` answer must be the input. An input is left out
+when cbor2 reads it, writes other bytes back, and a map in it holds
+two keys that are equal as Python values (the same key twice, or 1 and
+true, or 0 and false): cbor2 keeps one pair of those, and the slice
+keeps every pair, since it applies no duplicate-key rule.
+
+{cross_text}""")
     print(f"{ok}/{total} checks passed; results written to {RESULTS}")
     return 1 if failures else 0
 
