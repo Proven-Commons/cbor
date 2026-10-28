@@ -703,18 +703,21 @@ def main():
     check("empty", drv.ask("d", "") == "error")
 
     cross, why_not = cbor2_cross_check(drv)
-    if cross is None:
-        oracle_note = f"; the cbor2 cross-check did not run ({why_not})"
-        cross_text = textwrap.fill(
-            f"In this run {why_not}, so the cross-check did not run. To run "
-            f"it, install cbor2 {CBOR2_PIN}, the version the committed "
-            "record used, where the script can import it. For example:", 72)
-        cross_text += f"""
+    # Written in every run, so the record always says how to install cbor2.
+    install_text = textwrap.fill(
+        f"To run the cross-check, install cbor2 {CBOR2_PIN}, the version the "
+        "committed record used, where the script can import it. For "
+        "example:", 72) + f"""
 
     python3 -m venv /tmp/cbor2-venv
     /tmp/cbor2-venv/bin/pip install cbor2=={CBOR2_PIN}
     /tmp/cbor2-venv/bin/python tests/run_tests.py
 """
+    if cross is None:
+        oracle_note = f"; the cbor2 cross-check did not run ({why_not})"
+        cross_text = textwrap.fill(
+            f"In this run {why_not}, so the cross-check did not run.", 72)
+        cross_text += "\n\n" + install_text
     else:
         oracle_note = f"; cross-checked against cbor2 {cross['version']}, counted apart"
         t = cross["totals"]
@@ -734,7 +737,7 @@ def main():
             f"cbor2 accepted and {t['refused']} it refused, with "
             f"{t['disagreements']} disagreements. {t['left out']} inputs were "
             "left out because a map in them holds two keys that are equal "
-            "as Python values.", 72) + "\n"
+            "as Python values.", 72) + "\n\n" + install_text
 
     # The build is part of the check: lake build already ran if needed.
     total = checks

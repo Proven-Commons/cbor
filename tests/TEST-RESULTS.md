@@ -74,3 +74,10 @@ requests by part, where each input cbor2 accepts is asked twice, `d` and
 In all: 136592 requests, from 10729 inputs cbor2 accepted and 115134 it
 refused, with 0 disagreements. 11 inputs were left out because a map in
 them holds two keys that are equal as Python values.
+
+To run the cross-check, install cbor2 6.1.5, the version the committed
+record used, where the script can import it. For example:
+
+    python3 -m venv /tmp/cbor2-venv
+    /tmp/cbor2-venv/bin/pip install cbor2==6.1.5
+    /tmp/cbor2-venv/bin/python tests/run_tests.py
