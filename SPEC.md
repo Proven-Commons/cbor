@@ -2,16 +2,16 @@
 
 A CBOR codec: a decoder and encoder for a slice of RFC 8949. This
 specification is unreviewed: `bar.toml` lists it together with
-`Spec.lean` and `Spec/Defs.lean`, and its approval section is empty
-until a reviewer who did not write this specification approves it in a
-pull request.
+`Spec.lean`, `Spec/Defs.lean`, `Spec/Value.lean` and `Spec/Utf8.lean`,
+and its approval section is empty until a reviewer who did not write
+this specification approves it in a pull request.
 
 Bytes are `List UInt8`. The command-line tool converts at the edges.
 
 ## The slice
 
-RFC 8949, definite-length items only, in preferred (shortest) form
-(section 4.2.1):
+RFC 8949, definite-length items only, with every argument in its
+preferred (shortest) form (sections 4.1 and 4.2.1):
 
 - Major type 0: unsigned integers, argument range 0 to 2^64 - 1.
 - Major type 1: negative integers, `-1 - n` for argument `n`.
@@ -24,12 +24,16 @@ RFC 8949, definite-length items only, in preferred (shortest) form
   there, checked by the build.
 - Major type 4: arrays, definite length.
 - Major type 5: maps, definite length.
-- Major type 7, added information 20, 21, 22: `false`, `true`, `null`.
+- Major type 7, additional information 20, 21, 22: `false`, `true`,
+  `null`.
 
 Out of slice, always turned away: tags (major type 6), indefinite-length
-items and break (added information 31), reserved added information 28 to
-30, `undefined`, other simple values, half, single, and double floats,
-and any argument not in preferred form.
+items and break (additional information 31), reserved additional
+information 28 to 30, `undefined`, other simple values, half, single,
+and double floats, and any argument not in preferred form.
+`Spec.outOfSlice` in `Spec/Defs.lean` names the initial bytes the slice
+does not carry: major type 6, major type 7 except simple values 20 to
+22, and additional information 28 to 31.
 
 ## Well-formed items
 
@@ -41,10 +45,28 @@ argument. Both are spec files, so the approval covers them.
 
 ## Encoding
 
-Each well-formed item has exactly one encoding, given by `encode` in
-`Cbor/Basic.lean`: the head is the major type and the shortest argument
-form; byte and text strings follow with their payload; arrays and maps
-follow with their items in order; pairs encode key then value.
+`Spec.enc` in `Spec/Defs.lean` is the encoding, written from RFC 8949:
+
+- `Spec.itemHead mt arg` is the head (section 3): one initial byte with
+  the major type in its high 3 bits and the additional information in
+  its low 5 bits. An argument below 24 is the additional information
+  itself. A larger one follows in 1, 2, 4 or 8 bytes, the fewest that
+  hold it (below 2^8, 2^16, 2^32, or 2^64), with additional information
+  24, 25, 26 or 27 (the preferred serialization of section 4.1, and the
+  table of section 4.2.1).
+- `Spec.netBytes n x` is the `n` bytes of `x` in network byte order.
+- Unsigned `n` has major type 0 and argument `n`; the negative integer
+  `-1 - n` has major type 1 and argument `n`; byte and text strings
+  have major type 2 or 3, their length as argument, then their bytes;
+  arrays and maps have major type 4 or 5, their count of items or pairs
+  as argument, then the items, or each key followed by its value, in
+  order (section 3.1). `false`, `true` and `null` are major type 7 with
+  simple values 20, 21 and 22 (section 3.3).
+
+Examples in the same file check each boundary of the argument table:
+23 and 24, 255 and 256, 65535 and 65536, 2^32 - 1 and 2^32, and
+2^64 - 1. `Spec.cbor_encode_spec` proves that `encode` in
+`Cbor/Basic.lean` writes `Spec.enc` for every item.
 
 ## Decoding
 
@@ -52,6 +74,9 @@ follow with their items in order; pairs encode key then value.
 It returns `none` for everything it does not accept: out-of-slice
 initial bytes, non-preferred arguments, truncated input, text that is
 not well-formed UTF-8, and bytes left over after the item.
+`Spec.cbor_encode_decode` says exactly what it accepts: the encodings
+of the well-formed items. The rejection theorems state each kind of
+input it turns away for every input of that shape.
 
 ## What must always hold
 
@@ -61,22 +86,33 @@ same names in `Proofs/`, and the build fails if any proof breaks.
 
 | Property | Theorem |
 |----------|---------|
-| Decoding an encoding returns the same item | `Spec.cbor_decode_encode` |
+| Decoding the encoding of a well-formed item returns the item | `Spec.cbor_decode_encode` |
 | The decoder accepts a byte list exactly when it is the encoding of a well-formed item, and returns that item | `Spec.cbor_encode_decode` |
+| The encoder writes `Spec.enc`, for every item | `Spec.cbor_encode_spec` |
 | The decoder's UTF-8 check is the RFC 3629 grammar, on every byte list | `Spec.cbor_utf8_valid_eq` |
-| Reserved and indefinite added information is turned away | `Spec.cbor_rejects_reserved_ai` |
-| Tags are turned away | `Spec.cbor_rejects_tags` |
-| Other major type 7 values are turned away | `Spec.cbor_rejects_simple` |
-| The in-slice RFC 8949 Appendix A vectors hold, both directions | `Spec.cbor_rfc8949_vectors` |
-| Out-of-slice Appendix A rows are turned away | `Spec.cbor_rejects_out_of_slice` |
-| Non-preferred arguments are turned away | `Spec.cbor_rejects_nonpreferred` |
+| Additional information 28 to 31 is turned away, whatever follows | `Spec.cbor_rejects_reserved_ai` |
+| Tags are turned away, whatever follows | `Spec.cbor_rejects_tags` |
+| Major type 7 other than false, true, null is turned away, whatever follows | `Spec.cbor_rejects_simple` |
+| Every non-preferred argument in major types 0 to 5 is turned away, whatever follows | `Spec.cbor_rejects_nonpreferred` |
+| An out-of-slice item at the top, or one level inside an array or map after well-formed items, is turned away | `Spec.cbor_rejects_nested_out_of_slice` |
+| No proper prefix of the encoding of a well-formed item decodes | `Spec.cbor_rejects_truncated` |
+| The 37 in-slice rows of RFC 8949 Appendix A hold, both directions | `Spec.cbor_rfc8949_vectors` |
+| The 44 out-of-slice rows of Appendix A, and break alone, are turned away | `Spec.cbor_rejects_out_of_slice` |
 | Five example text items with bad UTF-8 are turned away | `Spec.cbor_rejects_bad_utf8` |
-| Input that ends inside an item is turned away | `Spec.cbor_rejects_truncation` |
+| Eight example inputs that end inside an item or go on after it are turned away | `Spec.cbor_rejects_truncation` |
 
 `Spec.cbor_encode_decode` is an if and only if: `decode bs = some v`
-holds exactly when `v.wf = true` and `encode v = bs`. So the decoder
-accepts the encodings of the well-formed items and nothing else, and
-never returns an item that is not well-formed.
+holds exactly when `v.wf = true` and `encode v = bs`. With
+`Spec.cbor_encode_spec`, `encode v` is `Spec.enc v`. So the decoder
+accepts the encodings of the well-formed items that RFC 8949 and this
+slice define, and nothing else, and never returns an item that is not
+well-formed.
+
+`Spec.cbor_rejects_nested_out_of_slice` states one level of nesting. At
+any depth, the decoder accepts only `Spec.enc v` for a well-formed `v`,
+and `Spec.enc` starts no item with a byte `Spec.outOfSlice` names; that
+second point is read from the definition of `Spec.enc`, not stated as a
+theorem.
 
 ## The command-line tool
 

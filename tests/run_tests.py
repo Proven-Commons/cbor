@@ -250,20 +250,64 @@ RFC_OK = [
     ("a0", "{}"), ("a201020304", "{1:2,3:4}"),
     ("a26161016162820203", "{t'61':1,t'62':[2,3]}"),
     ("826161a161626163", "[t'61',{t'62':t'63'}]"),
+    ("a56161614161626142616361436164614461656145",
+     "{t'61':t'41',t'62':t'42',t'63':t'43',t'64':t'44',t'65':t'45'}"),
     ("f4", "false"), ("f5", "true"), ("f6", "null"),
 ]
 
-# Out-of-slice rows: floats, simple, undefined, tags (incl. bignums),
-# indefinite lengths, break.
-RFC_REJECT = [
-    "f7", "f0", "f818", "f8ff",
-    "f97e00", "f9fc00", "f9c400", "fa47c35000", "fb7e37e43c8800759c",
-    "c074323031332d30332d32315432303a30343a30305a",
-    "c11a514b67b0", "c249010000000000000000", "c349010000000000000000",
-    "d8204567696751554d", "d8234567696751554d",
-    "5f4100ff", "7f6141ff", "9fff", "bf616101ff", "ff",
+# The other 44 rows of RFC 8949 Appendix A, all outside the slice:
+# bignums, floats, undefined and other simple values, tags, and
+# indefinite-length items, alone or nested. With RFC_OK, this is every
+# row of Appendix A (81).
+RFC_A_OUT = [
+    "c249010000000000000000", "c349010000000000000000",
+    "f90000", "f98000", "f93c00", "fb3ff199999999999a", "f93e00", "f97bff",
+    "fa47c35000", "fa7f7fffff", "fb7e37e43c8800759c", "f90001", "f90400",
+    "f9c400", "fbc010666666666666", "f97c00", "f97e00", "f9fc00",
+    "fa7f800000", "fa7fc00000", "faff800000", "fb7ff0000000000000",
+    "fb7ff8000000000000", "fbfff0000000000000",
+    "f7", "f0", "f8ff",
+    "c074323031332d30332d32315432303a30343a30305a", "c11a514b67b0",
+    "c1fb41d452d9ec200000", "d74401020304", "d818456449455446",
+    "d82076687474703a2f2f7777772e6578616d706c652e636f6d",
+    "5f42010243030405ff", "7f657374726561646d696e67ff", "9fff",
+    "9f018202039f0405ffff", "9f01820203820405ff", "83018202039f0405ff",
+    "83019f0203ff820405",
+    "9f0102030405060708090a0b0c0d0e0f101112131415161718181819ff",
+    "bf61610161629f0203ffff", "826161bf61626163ff",
+    "bf6346756ef563416d7421ff",
+]
+
+# Other shapes outside the slice, not rows of Appendix A: simple(24),
+# which section 3.3 calls not well-formed, more tags and indefinite
+# items, break on its own, and reserved additional information.
+OTHER_REJECT = [
+    "f818", "d8204567696751554d", "d8234567696751554d",
+    "5f4100ff", "7f6141ff", "bf616101ff", "ff",
     "1c", "1d", "1e", "1f", "3c", "5c", "7c", "9c", "bc", "dc",
 ]
+
+
+def out_of_slice(b):
+    """An initial byte the slice does not carry: a tag, major type 7
+    other than false, true and null, or additional information 28 to
+    31. Written from RFC 8949 section 3, apart from the Lean code."""
+    mt, ai = b >> 5, b & 31
+    return mt == 6 or (mt == 7 and ai not in (20, 21, 22)) or ai >= 28
+
+
+def completion(b):
+    """Bytes that would finish an item that starts with b, if the slice
+    carried it: a tag's content, a float's or simple value's following
+    bytes, the end of an empty indefinite item."""
+    mt, ai = b >> 5, b & 31
+    if mt == 6:
+        return bytes([0x00])
+    if mt == 7:
+        return bytes({24: 1, 25: 2, 26: 4, 27: 8}.get(ai, 0))
+    if ai == 31:
+        return bytes([0xff])
+    return b""
 
 
 def main():
@@ -276,7 +320,7 @@ def main():
               f"want {canon}")
         check(f"rfc r {hexs}", drv.ask("r", hexs) == hexs,
               "re-encode must return the input")
-    for hexs in RFC_REJECT:
+    for hexs in RFC_A_OUT + OTHER_REJECT:
         check(f"rfc reject {hexs}", drv.ask("d", hexs) == "error")
         check(f"rfc reject r {hexs}", drv.ask("r", hexs) == "error")
 
@@ -343,17 +387,51 @@ def main():
                   "re-encode returns the input")
             accepted += 1
 
-    # Non-preferred forms of small values: must be turned away.
+    # Non-preferred arguments, at every boundary of the argument table
+    # (RFC 8949 section 4.2.1) and at random values below it, for each
+    # major type 0 to 5: turned away. Strings, arrays and maps carry a
+    # full body, so only the argument's form is wrong. The same value in
+    # its preferred form is accepted, as a control.
+    def body(mt, n):
+        if mt < 2:
+            return b""
+        return {2: b"\x00", 3: b"a", 4: b"\x00", 5: b"\x00\x00"}[mt] * n
+    limits = {24: 24, 25: 2**8, 26: 2**16, 27: 2**32}
+    widths = {24: 1, 25: 2, 26: 4, 27: 8}
     for mt in [0, 1, 2, 3, 4, 5]:
-        for ai, extra in [(24, 0), (25, 200), (26, 5000), (27, 70000)]:
-            hdr = ref_head(mt, 0)
-            np = bytes([(mt << 5) | ai]) + extra.to_bytes(
-                {24: 1, 25: 2, 26: 4, 27: 8}[ai], "big")
-            payload = b""
-            if mt in (2, 3):
-                payload = bytes(extra)  # the string body itself
-            check(f"nonpref mt{mt} ai{ai}",
-                  drv.ask("d", (np + payload).hex()) == "error")
+        for ai in [24, 25, 26, 27]:
+            lim = limits[ai]
+            values = sorted(v for v in {0, 1, 23, lim // 256 - 1, lim // 256,
+                                        lim - 1, rng.randrange(lim)}
+                            if 0 <= v < lim)
+            for x in values:
+                if mt >= 2 and x > 300:
+                    continue
+                np = bytes([(mt << 5) | ai]) + x.to_bytes(widths[ai], "big")
+                item = np + body(mt, x)
+                check(f"nonpref mt{mt} ai{ai} {x}",
+                      drv.ask("d", item.hex()) == "error", item.hex())
+                rejected += 1
+                pref = ref_head(mt, x) + body(mt, x)
+                want = ref_full(list(pref))
+                check(f"pref mt{mt} {x}", want is not None
+                      and drv.ask("d", pref.hex()) == want, pref.hex())
+                accepted += 1
+
+    # Every initial byte outside the slice, with the bytes that would
+    # finish its item, at the top and nested: as an array's first or
+    # later item, as a map's key or value, and two and three levels
+    # down. Turned away, by the Lean code and by the oracle.
+    def nestings(it):
+        return [it, b"\x81" + it, b"\x82\x01" + it, b"\xa1" + it + b"\x00",
+                b"\xa1\x01" + it, b"\x81\x81" + it, b"\xa1\x01\x81\xa1\x00" + it]
+    for b in range(256):
+        if not out_of_slice(b):
+            continue
+        for k, enc in enumerate(nestings(bytes([b]) + completion(b))):
+            want = ref_full(list(enc))
+            check(f"nested out {b:02x} {k}", want is None
+                  and drv.ask("d", enc.hex()) == "error", enc.hex())
             rejected += 1
 
     # Bad UTF-8 text payloads: overlong, surrogate, stray continuation.
