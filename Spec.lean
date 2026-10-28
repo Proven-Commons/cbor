@@ -21,12 +21,11 @@ open Cbor
 theorem Spec.cbor_decode_encode (v : Value) (h : v.wf = true) :
     decode (encode v) = some v := sorry
 
-/-- The decoder accepts nothing but encodings: whatever it accepts is
-    the encoding of what it returns. With the claim above this makes
-    the decoder strict: it accepts exactly the preferred-form,
-    definite-length encodings of the slice, and nothing else. -/
+/-- The decoder accepts exactly the encodings of well-formed items, and
+    nothing else: it accepts `bs` and returns `v` if and only if `v` is
+    well-formed (`Value.wf`) and `bs` is the encoding of `v`. -/
 theorem Spec.cbor_encode_decode (bs : List UInt8) (v : Value) :
-    decode bs = some v → encode v = bs := sorry
+    decode bs = some v ↔ v.wf = true ∧ encode v = bs := sorry
 
 /-! ## Added information the RFC holds back, and the indefinite form -/
 

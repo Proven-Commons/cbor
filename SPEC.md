@@ -50,7 +50,7 @@ same names in `Proofs/`, and the build fails if any proof breaks.
 | Property | Theorem |
 |----------|---------|
 | Decoding an encoding returns the same item | `Spec.cbor_decode_encode` |
-| The decoder accepts nothing but encodings | `Spec.cbor_encode_decode` |
+| The decoder accepts a byte list exactly when it is the encoding of a well-formed item, and returns that item | `Spec.cbor_encode_decode` |
 | Reserved and indefinite added information is turned away | `Spec.cbor_rejects_reserved_ai` |
 | Tags are turned away | `Spec.cbor_rejects_tags` |
 | Other major type 7 values are turned away | `Spec.cbor_rejects_simple` |
@@ -60,8 +60,10 @@ same names in `Proofs/`, and the build fails if any proof breaks.
 | Text that is not well-formed UTF-8 is turned away | `Spec.cbor_rejects_bad_utf8` |
 | Input that ends inside an item is turned away | `Spec.cbor_rejects_truncation` |
 
-With both round-trip theorems, the decoder accepts exactly the
-preferred-form, definite-length encodings of the slice, and nothing else.
+`Spec.cbor_encode_decode` is an if and only if: `decode bs = some v`
+holds exactly when `v.wf = true` and `encode v = bs`. So the decoder
+accepts the encodings of the well-formed items and nothing else, and
+never returns an item that is not well-formed.
 
 ## The command-line tool
 

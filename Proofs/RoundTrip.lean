@@ -1269,19 +1269,25 @@ theorem soundAll : ∀ F : Nat,
                 rw [List.append_assoc, List.append_assoc, ← hbsrest, ← hbsv, ← hbsk]
     exact ⟨hv, hl, hp⟩
 
-/-- Soundness: the decoder accepts nothing but encodings. -/
+/-- Soundness: whatever the decoder accepts is the encoding of a
+    well-formed item, the one it returns. -/
 theorem encode_decode (bs : List UInt8) (v : Value) (h : decode bs = some v) :
-    encode v = bs := by
+    v.wf = true ∧ encode v = bs := by
   obtain ⟨hv, -, -⟩ := soundAll bs.length
   unfold decode at h
   split at h
   · rename_i v' hmain
     obtain ⟨hwf, hbs⟩ := hv bs v' [] hmain
     rw [List.append_nil] at hbs
-    rw [← Option.some.inj h]
-    exact hbs.symm
+    cases h
+    exact ⟨hwf, hbs.symm⟩
   · simp at h
 
-/-- The decoder accepts nothing but encodings: `Spec.cbor_encode_decode`. -/
+/-- The decoder accepts exactly the encodings of well-formed items:
+    `Spec.cbor_encode_decode`. -/
 theorem Spec.cbor_encode_decode (bs : List UInt8) (v : Value) :
-    decode bs = some v → encode v = bs := encode_decode bs v
+    decode bs = some v ↔ v.wf = true ∧ encode v = bs := by
+  constructor
+  · exact encode_decode bs v
+  · rintro ⟨hwf, rfl⟩
+    exact decode_encode v hwf

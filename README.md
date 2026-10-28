@@ -31,10 +31,10 @@ The round-trip theorems, in `Proofs/RoundTrip.lean`:
 
 - `Spec.cbor_decode_encode`: decoding the encoding of a well-formed
   item returns the same item (completeness).
-- `Spec.cbor_encode_decode`: if the decoder accepts bytes, those bytes
-  are the encoding of the item it returns (soundness). With
-  completeness this makes the decoder strict: it accepts exactly the
-  preferred-form, definite-length encodings of the slice.
+- `Spec.cbor_encode_decode`: the decoder accepts bytes `bs` and returns
+  the item `v` if and only if `v` is well-formed (`Value.wf`) and `bs`
+  is the encoding of `v`. So it accepts exactly the encodings of the
+  well-formed items, and nothing else.
 
 The rejection theorems, in `Proofs/Cbor.lean`:
 

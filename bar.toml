@@ -7,8 +7,9 @@ name = "cbor"
 status = "in-progress"
 page = "README.md"
 # GitHub handles of everyone who wrote the specification. It was drafted
-# by an AI agent working for the org, from the ahrazzle account.
-spec_authors = ["ahrazzle"]
+# by an AI agent working for the org, from the ahrazzle account, and
+# revised by zero-aska to answer the reviews of pull request #2.
+spec_authors = ["ahrazzle", "zero-aska"]
 # The program people run. A change to it voids the approval.
 entry_points = ["Main.lean"]
 
