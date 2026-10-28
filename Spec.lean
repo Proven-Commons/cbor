@@ -46,10 +46,10 @@ grammar of RFC 3629, section 4. The decoder checks text payloads with
 theorem Spec.cbor_utf8_valid_eq (bs : List UInt8) :
     Cbor.Utf8.valid bs = Spec.Utf8.wellFormed bs := sorry
 
-/-! ## Added information the RFC holds back, and the indefinite form -/
+/-! ## Additional information the RFC holds back, and the indefinite form -/
 
-/-- An initial byte with added information 28 to 30 (reserved by
-    RFC 8949, section 3.1) is turned away, as is 31, the indefinite
+/-- An initial byte with additional information 28 to 30 (reserved by
+    RFC 8949, section 3) is turned away, as is 31, the indefinite
     form, which this slice does not carry. -/
 theorem Spec.cbor_rejects_reserved_ai (b : UInt8) (rest : List UInt8) :
     b.toNat % 32 ≥ 28 → decode (b :: rest) = none := sorry
