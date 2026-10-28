@@ -106,9 +106,12 @@ Read this before trusting the codec with real data:
   theorem of their own: `Spec.cbor_encode_decode` and
   `Spec.cbor_encode_spec` say the decoder accepts only `Spec.enc v`,
   and that `Spec.enc` never starts an item with such a byte is read
-  from its definition. The three Appendix A rows with an indefinite
-  item two levels down are proved examples, and the tests nest such
-  items up to three levels down.
+  from its definition. No row of Appendix A nests an out-of-slice item
+  more than one level down. The three rows with an indefinite item
+  inside a definite array (`83018202039f0405ff`, `83019f0203ff820405`
+  and `826161bf61626163ff`) are instances of this theorem, and
+  `Spec.cbor_rejects_out_of_slice` also lists them. The tests nest
+  such items up to three levels down.
 - The command-line tool in `Main.lean` calls the proved `decode` and
   `encode`, but its hex parsing and the canonical text form it prints
   are not proved; the tests exercise them. It is a thin wrapper for the
