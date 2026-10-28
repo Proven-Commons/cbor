@@ -5,9 +5,14 @@ items in preferred (shortest) form. A machine-checked proof shows the
 decoder accepts exactly the encodings of the slice's well-formed items,
 and nothing else.
 
-It is a Proven Commons project, built to the verified bar published in
-the org's home repo, [mission](https://github.com/Proven-Commons/mission).
-Status: first slice, October 2026.
+It is a Proven Commons project, working toward the verified bar
+published in the org's home repo,
+[mission](https://github.com/Proven-Commons/mission). It does not meet
+the bar yet.
+
+Status: in progress. The specification has no approval from a reviewer
+who did not write it, and the bar check has not yet passed in CI with
+the branch rule in place, so this project is not verified.
 
 ## Run it
 
@@ -106,16 +111,35 @@ Read this before trusting the codec with real data:
   are not proved; the tests exercise them. It is a thin wrapper for the
   differential tests, not a file tool, and reads requests on stdin.
 - Speed and memory use are not proved.
-- The Lean compiler, runtime, and kernel are trusted, as in every Lean
-  project. A bug in them is outside the proof.
+
+## What you must trust
+
+- The Lean 4.35.0 kernel, and the five other kernels that
+  `lake comparator --paranoid` runs (`leanchecker-paranoid`,
+  `lean4lean`, `nanoda`, `con-leche`, `con-ron`): a bug that every one
+  of them shares would be outside the proof.
+- The Lean compiler and runtime, which turn the proved definitions into
+  the program that runs: a bug in them could make it differ.
+- The hardware and operating system the program runs on.
+- The specification itself: `SPEC.md`, `Spec.lean`, and the
+  definitions in `Spec/Defs.lean`, `Spec/Value.lean` and
+  `Spec/Utf8.lean`, which say what the theorems mean.
+
+There are no dependencies: `lake-manifest.json` lists no packages. The
+code uses none of the features bar item 4 forbids, so `bar.toml` lists
+no exceptions.
 
 ## Re-check it
 
 ```
 lake build
+lake comparator --paranoid
 python3 tests/run_tests.py
 ```
 
-The build fails if a proof breaks. The test script rebuilds if needed,
-reruns every comparison against an independent Python implementation of
-the slice, and rewrites `tests/TEST-RESULTS.md`.
+`lake build` builds the code, the challenge file and the proofs.
+`lake comparator --paranoid` checks, in a sandbox, that each theorem
+named in `comparator.json` proves exactly the statement in `Spec.lean`,
+uses only the three standard axioms, and passes every kernel. The test
+script builds the tool if needed, runs every input against the oracle,
+and rewrites `tests/TEST-RESULTS.md`.

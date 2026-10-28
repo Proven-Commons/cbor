@@ -26,6 +26,9 @@ failures = []
 inputs = 0
 accepted = 0
 rejected = 0
+# Inputs fed to the Lean tool, by section of this script.
+section = "start"
+per_section = {}
 
 
 def check(name, ok, detail=""):
@@ -224,6 +227,7 @@ class LeanDriver:
     def ask(self, op, hexs):
         global inputs
         inputs += 1
+        per_section[section] = per_section.get(section, 0) + 1
         self.proc.stdin.write(f"{op} {hexs}\n")
         self.proc.stdin.flush()
         return self.proc.stdout.readline().rstrip("\n")
@@ -311,9 +315,10 @@ def completion(b):
 
 
 def main():
-    global accepted, rejected
+    global accepted, rejected, section
     drv = LeanDriver()
 
+    section = "RFC 8949 Appendix A rows and other out-of-slice shapes"
     # RFC vectors, both directions.
     for hexs, canon in RFC_OK:
         check(f"rfc d {hexs}", drv.ask("d", hexs) == canon,
@@ -361,6 +366,7 @@ def main():
                             for _ in range(rng.randrange(0, 4))])
         return (t,)
 
+    section = "Generated well-formed items and their truncations"
     for i in range(400):
         v = gen(0)
         enc = ref_encode(v)
@@ -373,6 +379,7 @@ def main():
             check(f"gen trunc {i}.{cut}", drv.ask("d", enc[:cut].hex()) == "error")
         accepted += 1
 
+    section = "Random bytes"
     # Random garbage: compare acceptance and canonical form.
     for i in range(600):
         bs = bytes(rng.randrange(256) for _ in range(rng.randrange(0, 14)))
@@ -387,6 +394,7 @@ def main():
                   "re-encode returns the input")
             accepted += 1
 
+    section = "Non-preferred arguments and preferred controls"
     # Non-preferred arguments, at every boundary of the argument table
     # (RFC 8949 section 4.2.1) and at random values below it, for each
     # major type 0 to 5: turned away. Strings, arrays and maps carry a
@@ -418,6 +426,7 @@ def main():
                       and drv.ask("d", pref.hex()) == want, pref.hex())
                 accepted += 1
 
+    section = "Out-of-slice initial bytes, at the top and nested"
     # Every initial byte outside the slice, with the bytes that would
     # finish its item, at the top and nested: as an array's first or
     # later item, as a map's key or value, and two and three levels
@@ -434,6 +443,7 @@ def main():
                   and drv.ask("d", enc.hex()) == "error", enc.hex())
             rejected += 1
 
+    section = "Malformed UTF-8 examples"
     # Bad UTF-8 text payloads: overlong, surrogate, stray continuation.
     bad = [bytes([0x61, 0xc0]), bytes([0x62, 0xc0, 0x80]),
            bytes([0x63, 0xed, 0xa0, 0x80]), bytes([0x62, 0xf4, 0x90]),
@@ -443,6 +453,7 @@ def main():
         check(f"utf8 reject {p.hex()}", drv.ask("d", (hdr + p).hex()) == "error")
         rejected += 1
 
+    section = "UTF-8 grammar rows"
     # Each row of the UTF-8 grammar: byte sequences built from the row's
     # ranges, with some bytes moved just outside their range, alone or
     # between other characters. The oracle is Python's strict UTF-8
@@ -471,6 +482,7 @@ def main():
             else:
                 accepted += 1
 
+    section = "Trailing bytes and empty input"
     # Leftover bytes after a complete item: turned away.
     check("trailing", drv.ask("d", "0102") == "error")
     check("empty", drv.ask("d", "") == "error")
@@ -478,40 +490,41 @@ def main():
     # The build is part of the check: lake build already ran if needed.
     total = checks
     ok = total - len(failures)
+    breakdown = "\n".join(f"  - {name}: {n}" for name, n in per_section.items())
+    failed = "".join(f"\n  - {f}" for f in failures)
     RESULTS.write_text(f"""# Test results
 
-Run by `tests/run_tests.py` against an independent Python implementation of
-the slice written from RFC 8949, in the same file, and against the RFC 8949
-Appendix A vectors.
-Lean: Lean 4.35.0. Python: {sys.version.split()[0]}.
+Written by `python3 tests/run_tests.py`, which feeds each input to the
+command-line tool built from the proved code (`.lake/build/bin/cbor`)
+and compares its answer with the oracle's.
 
+- Oracle: reference codec in `tests/run_tests.py`, on Python {sys.version.split()[0]}
 - Seed: {SEED}
-- Byte inputs fed to the Lean codec: {inputs}
-- Checks run: {total}
-- Checks passed: {ok}
-- Failures: {len(failures)}
-- Accepted inputs: generated well-formed items, their random-garbage
-  counterparts that parse, and the in-slice RFC 8949 Appendix A rows.
-- Turned away: the out-of-slice Appendix A rows (floats, simple values,
-  `undefined`, tags including bignums, indefinite lengths, break, reserved
-  added information), truncations of every generated item, non-preferred
-  argument forms for all six major types, malformed UTF-8 text payloads,
-  trailing bytes after an item, and empty input.
+- Inputs: {inputs}
+- Failures: {len(failures)}{failed}
 
-Axiom check (`Proofs.lean`):
+The oracle is a decoder and encoder of the slice written from RFC 8949
+apart from the Lean code, in the test script itself. It checks text
+payloads with Python's strict UTF-8 decoder, which follows RFC 3629.
 
-```
-'Spec.cbor_decode_encode' depends on axioms: [propext, Classical.choice, Quot.sound]
-'Spec.cbor_encode_decode' depends on axioms: [propext, Quot.sound]
-'Spec.cbor_rejects_reserved_ai' depends on axioms: [propext, Quot.sound]
-'Spec.cbor_rejects_tags' depends on axioms: [propext, Quot.sound]
-'Spec.cbor_rejects_simple' depends on axioms: [propext, Quot.sound]
-'Spec.cbor_rfc8949_vectors' depends on axioms: [propext]
-'Spec.cbor_rejects_out_of_slice' depends on axioms: [propext]
-'Spec.cbor_rejects_nonpreferred' depends on axioms: [propext]
-'Spec.cbor_rejects_bad_utf8' depends on axioms: [propext]
-'Spec.cbor_rejects_truncation' depends on axioms: [propext]
-```
+Inputs by section:
+
+{breakdown}
+
+The RFC 8949 Appendix A section runs all 81 rows: the 37 in the slice
+are decoded and encoded again, and the 44 outside it (bignums, floats,
+`undefined` and other simple values, tags, indefinite-length items) are
+turned away, in both directions. None is skipped. It also runs 17 other
+shapes outside the slice: simple(24), more tags and indefinite items,
+break on its own, and reserved additional information.
+
+The plan in issue #1 named Python cbor2 as the oracle. This script uses
+its own reference implementation instead, so that it needs nothing
+outside Python's standard library.
+
+Each input is one request to the tool: `d` (decode) or `r` (decode and
+encode again). This script does not check proofs or axioms; `lake
+comparator --paranoid` does.
 """)
     print(f"{ok}/{total} checks passed; results written to {RESULTS}")
     return 1 if failures else 0
