@@ -1,0 +1,17 @@
+name = "cbor"
+version = "0.1.0"
+license = "Apache-2.0"
+defaultTargets = ["Cbor", "Spec", "Proofs", "cbor"]
+
+[[lean_lib]]
+name = "Cbor"
+
+[[lean_lib]]
+name = "Spec"
+
+[[lean_lib]]
+name = "Proofs"
+
+[[lean_exe]]
+name = "cbor"
+root = "Main"
