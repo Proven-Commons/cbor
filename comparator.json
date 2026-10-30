@@ -1,15 +1,25 @@
 {
-  "challenge_module": "Spec",
-  "solution_module": "Proofs",
+  "challenge_module": "Cbor.Spec",
+  "solution_module": "Cbor.Proofs",
   "theorem_names": [
-    "Spec.cbor_decode_encode", "Spec.cbor_encode_decode", "Spec.cbor_encode_spec",
-    "Spec.cbor_utf8_valid_eq",
-    "Spec.cbor_rejects_reserved_ai", "Spec.cbor_rejects_tags",
-    "Spec.cbor_rejects_simple", "Spec.cbor_rfc8949_vectors",
-    "Spec.cbor_rejects_out_of_slice", "Spec.cbor_rejects_nonpreferred",
-    "Spec.cbor_rejects_nested_out_of_slice",
-    "Spec.cbor_rejects_bad_utf8", "Spec.cbor_rejects_truncated",
-    "Spec.cbor_rejects_truncation"
+    "Cbor.Spec.cbor_decode_encode",
+    "Cbor.Spec.cbor_encode_decode",
+    "Cbor.Spec.cbor_encode_spec",
+    "Cbor.Spec.cbor_utf8_valid_eq",
+    "Cbor.Spec.cbor_rejects_reserved_ai",
+    "Cbor.Spec.cbor_rejects_tags",
+    "Cbor.Spec.cbor_rejects_simple",
+    "Cbor.Spec.cbor_rfc8949_vectors",
+    "Cbor.Spec.cbor_rejects_out_of_slice",
+    "Cbor.Spec.cbor_rejects_nonpreferred",
+    "Cbor.Spec.cbor_rejects_nested_out_of_slice",
+    "Cbor.Spec.cbor_rejects_bad_utf8",
+    "Cbor.Spec.cbor_rejects_truncated",
+    "Cbor.Spec.cbor_rejects_truncation"
   ],
-  "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
+  "permitted_axioms": [
+    "propext",
+    "Quot.sound",
+    "Classical.choice"
+  ]
 }

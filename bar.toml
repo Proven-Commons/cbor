@@ -14,7 +14,7 @@ spec_authors = ["ahrazzle", "zero-aska"]
 entry_points = ["Main.lean"]
 
 [spec]
-files = ["SPEC.md", "Spec.lean", "Spec/Defs.lean", "Spec/Value.lean", "Spec/Utf8.lean"]
+files = ["SPEC.md", "Cbor/Spec.lean", "Cbor/Spec/Defs.lean", "Cbor/Spec/Value.lean", "Cbor/Spec/Utf8.lean"]
 # The code under proof: the functions the statements are about. The item
 # type and Value.wf only give the statements their meaning, so they are
 # in the spec files above, not here.

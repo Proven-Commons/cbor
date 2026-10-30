@@ -1,21 +1,21 @@
 /-
-  The definitions the statements in `Spec.lean` use besides the code
+  The definitions the statements in `Cbor/Spec.lean` use besides the code
   under proof: the encoding of an item, written from RFC 8949, and the
   initial bytes the slice does not carry. Part of the specification for
-  this slice, with `Spec.lean` and `SPEC.md`; the specification is
+  this slice, with `Cbor/Spec.lean` and `SPEC.md`; the specification is
   unreviewed (see `SPEC.md`).
 
-  - `Spec/Utf8.lean`: well-formed UTF-8, written from the grammar of
+  - `Cbor/Spec/Utf8.lean`: well-formed UTF-8, written from the grammar of
     RFC 3629, section 4, with one example for each row.
-  - `Spec/Value.lean`: the item type and its well-formedness.
-  - This file: `Spec.enc`, the preferred serialization of an item
+  - `Cbor/Spec/Value.lean`: the item type and its well-formedness.
+  - This file: `Cbor.Spec.enc`, the preferred serialization of an item
     (RFC 8949, sections 3, 3.1, 3.3, 4.1 and 4.2.1), with examples at
-    every boundary of the argument table, and `Spec.outOfSlice`.
+    every boundary of the argument table, and `Cbor.Spec.outOfSlice`.
 -/
 
-import Spec.Value
+import Cbor.Spec.Value
 
-namespace Spec
+namespace Cbor.Spec
 
 open Cbor
 
@@ -119,4 +119,4 @@ example : outOfSlice 0xf6 = false := rfl                -- null
 example : outOfSlice 0x1b = false := rfl                -- 8-byte unsigned
 example : outOfSlice 0xbb = false := rfl                -- map, 8-byte count
 
-end Spec
+end Cbor.Spec

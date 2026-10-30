@@ -4,20 +4,20 @@
   input cut short inside an item are all turned away.
 -/
 
-import Proofs.Cbor
-import Proofs.Encode
-import Proofs.RoundTrip
+import Cbor.Proofs.Cbor
+import Cbor.Proofs.Encode
+import Cbor.Proofs.RoundTrip
 
 open Cbor
 
 namespace Cbor
 
-/-! ## Reading an argument written by `Spec.netBytes` -/
+/-! ## Reading an argument written by `Cbor.Spec.netBytes` -/
 
-theorem netBytes_length (k x : Nat) : (Spec.netBytes k x).length = k := by
+theorem netBytes_length (k x : Nat) : (Cbor.Spec.netBytes k x).length = k := by
   rw [← beBytes_eq_netBytes, beBytes_length]
 
-theorem readBe_netBytes (k x : Nat) (h : x < 256 ^ k) : readBe (Spec.netBytes k x) = x := by
+theorem readBe_netBytes (k x : Nat) (h : x < 256 ^ k) : readBe (Cbor.Spec.netBytes k x) = x := by
   rw [← beBytes_eq_netBytes]
   exact readBe_beBytes k x h
 
@@ -60,18 +60,18 @@ theorem headByte (mt ai : Nat) (hmt : mt ≤ 5) (hai : ai < 32) :
 
 end Cbor
 
-/-- `Spec.cbor_rejects_nonpreferred`. -/
-theorem Spec.cbor_rejects_nonpreferred (mt x : Nat) (rest : List UInt8) (hmt : mt ≤ 5) :
-    (x < 24 → decode ((mt * 32 + 24).toUInt8 :: Spec.netBytes 1 x ++ rest) = none) ∧
-    (x < 2 ^ 8 → decode ((mt * 32 + 25).toUInt8 :: Spec.netBytes 2 x ++ rest) = none) ∧
-    (x < 2 ^ 16 → decode ((mt * 32 + 26).toUInt8 :: Spec.netBytes 4 x ++ rest) = none) ∧
-    (x < 2 ^ 32 → decode ((mt * 32 + 27).toUInt8 :: Spec.netBytes 8 x ++ rest) = none) := by
+/-- `Cbor.Spec.cbor_rejects_nonpreferred`. -/
+theorem Cbor.Spec.cbor_rejects_nonpreferred (mt x : Nat) (rest : List UInt8) (hmt : mt ≤ 5) :
+    (x < 24 → decode ((mt * 32 + 24).toUInt8 :: Cbor.Spec.netBytes 1 x ++ rest) = none) ∧
+    (x < 2 ^ 8 → decode ((mt * 32 + 25).toUInt8 :: Cbor.Spec.netBytes 2 x ++ rest) = none) ∧
+    (x < 2 ^ 16 → decode ((mt * 32 + 26).toUInt8 :: Cbor.Spec.netBytes 4 x ++ rest) = none) ∧
+    (x < 2 ^ 32 → decode ((mt * 32 + 27).toUInt8 :: Cbor.Spec.netBytes 8 x ++ rest) = none) := by
   refine ⟨fun hx => ?_, fun hx => ?_, fun hx => ?_, fun hx => ?_⟩
   · obtain ⟨h1, h2⟩ := headByte mt 24 hmt (by decide)
     rw [List.cons_append]
     apply decode_none_of_readArg _ _ (by omega) (by omega)
     rw [h2]
-    simp only [Spec.netBytes, List.cons_append, List.nil_append]
+    simp only [Cbor.Spec.netBytes, List.cons_append, List.nil_append]
     rw [readArg_24, ite_eq_right]
     rw [toNat_toUInt8]
     omega
@@ -101,8 +101,8 @@ namespace Cbor
 /-- The reader of one item turns away an out-of-slice initial byte,
     whatever its fuel. -/
 theorem decodeFuel_outOfSlice (F : Nat) (b : UInt8) (rest : List UInt8)
-    (hb : Spec.outOfSlice b = true) : decodeFuel F (b :: rest) = none := by
-  simp [Spec.outOfSlice] at hb
+    (hb : Cbor.Spec.outOfSlice b = true) : decodeFuel F (b :: rest) = none := by
+  simp [Cbor.Spec.outOfSlice] at hb
   have hlt : b.toNat < 256 := b.toBitVec.isLt
   cases F with
   | zero => rfl
@@ -220,16 +220,16 @@ theorem decode_container_none (mt n : Nat) (body : List UInt8) (hmt : mt = 4 ∨
 
 end Cbor
 
-/-- `Spec.cbor_rejects_nested_out_of_slice`. -/
-theorem Spec.cbor_rejects_nested_out_of_slice (b : UInt8) (rest : List UInt8) (n : Nat)
+/-- `Cbor.Spec.cbor_rejects_nested_out_of_slice`. -/
+theorem Cbor.Spec.cbor_rejects_nested_out_of_slice (b : UInt8) (rest : List UInt8) (n : Nat)
     (xs : List Value) (kvs : List (Value × Value)) (k : Value)
-    (hb : Spec.outOfSlice b = true) (hn : n < 2 ^ 64) (hxs : Value.wfAll xs = true)
+    (hb : Cbor.Spec.outOfSlice b = true) (hn : n < 2 ^ 64) (hxs : Value.wfAll xs = true)
     (hkvs : Value.wfPairs kvs = true) (hk : k.wf = true) :
     decode (b :: rest) = none ∧
-    (xs.length < n → decode (Spec.itemHead 4 n ++ Spec.encList xs ++ b :: rest) = none) ∧
-    (kvs.length < n → decode (Spec.itemHead 5 n ++ Spec.encPairs kvs ++ b :: rest) = none) ∧
+    (xs.length < n → decode (Cbor.Spec.itemHead 4 n ++ Cbor.Spec.encList xs ++ b :: rest) = none) ∧
+    (kvs.length < n → decode (Cbor.Spec.itemHead 5 n ++ Cbor.Spec.encPairs kvs ++ b :: rest) = none) ∧
     (kvs.length < n →
-      decode (Spec.itemHead 5 n ++ Spec.encPairs kvs ++ Spec.enc k ++ b :: rest) = none) := by
+      decode (Cbor.Spec.itemHead 5 n ++ Cbor.Spec.encPairs kvs ++ Cbor.Spec.enc k ++ b :: rest) = none) := by
   have hbad : ∀ F, decodeFuel F (b :: rest) = none := fun F => decodeFuel_outOfSlice F b rest hb
   refine ⟨?_, fun hlt => ?_, fun hlt => ?_, fun hlt => ?_⟩
   · unfold decode
@@ -290,9 +290,9 @@ theorem Spec.cbor_rejects_nested_out_of_slice (b : UInt8) (rest : List UInt8) (n
 
 /-! ## Input cut short inside an item -/
 
-/-- `Spec.cbor_rejects_truncated`. -/
-theorem Spec.cbor_rejects_truncated (v : Value) (pre post : List UInt8) (hv : v.wf = true)
-    (h : pre ++ post = Spec.enc v) (hpost : post ≠ []) : decode pre = none := by
+/-- `Cbor.Spec.cbor_rejects_truncated`. -/
+theorem Cbor.Spec.cbor_rejects_truncated (v : Value) (pre post : List UInt8) (hv : v.wf = true)
+    (h : pre ++ post = Cbor.Spec.enc v) (hpost : post ≠ []) : decode pre = none := by
   rw [← encode_eq_enc] at h
   cases hd : decode pre with
   | none => rfl

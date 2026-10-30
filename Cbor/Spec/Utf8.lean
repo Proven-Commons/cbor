@@ -22,7 +22,7 @@
   matching a row.
 -/
 
-namespace Spec.Utf8
+namespace Cbor.Spec.Utf8
 
 /-- The alternatives of `UTF8-char`, one per line of the grammar. Each
     is a list of byte ranges, low and high inclusive, one range for
@@ -115,4 +115,4 @@ example : wellFormed [0xFF] = false := rfl
 example : wellFormed [0x61, 0xC3, 0xBC, 0x62] = true := rfl   -- "aüb"
 example : wellFormed [0x61, 0x80, 0x62] = false := rfl
 
-end Spec.Utf8
+end Cbor.Spec.Utf8

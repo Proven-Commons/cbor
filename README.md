@@ -28,50 +28,50 @@ printf 'r 83010203\n' | .lake/build/bin/cbor
 The tool reads one request per line. `d <hex>` prints the item in a
 canonical text form (`[1,2,3]` for the example), or `error`. `r <hex>`
 decodes and encodes again, printing the lowercase hex of the encoding.
-For any input the decoder accepts, `Spec.cbor_encode_decode` says the
+For any input the decoder accepts, `Cbor.Spec.cbor_encode_decode` says the
 encoding is the input's bytes, so the answer is the input in lowercase
 hex. The tool's hex parsing and printing are not proved; see What is
 not proved.
 
 ## What is proved
 
-Each claim below is a theorem of `Spec.lean`, the challenge file, proved
-under the same name in `Proofs/`. The definitions the statements use
+Each claim below is a theorem of `Cbor/Spec.lean`, the challenge file, proved
+under the same name in `Cbor/Proofs/`. The definitions the statements use
 besides the code are spec files too: the item type `Value` and
-well-formedness `Value.wf` in `Spec/Value.lean`, well-formed UTF-8 in
-`Spec/Utf8.lean`, and the encoding `Spec.enc` in `Spec/Defs.lean`.
+well-formedness `Value.wf` in `Cbor/Spec/Value.lean`, well-formed UTF-8 in
+`Cbor/Spec/Utf8.lean`, and the encoding `Cbor.Spec.enc` in `Cbor/Spec/Defs.lean`.
 
 The round trip, and what the encoding is:
 
 | Claim | Theorem |
 |-------|---------|
-| Decoding the encoding of a well-formed item gives the item back. | `Spec.cbor_decode_encode` |
-| The decoder accepts bytes `bs` and returns the item `v` if and only if `v` is well-formed (`Value.wf`) and `bs` is the encoding of `v`. So it accepts the encodings of the well-formed items and nothing else, and never returns an item that is not well-formed. | `Spec.cbor_encode_decode` |
-| For every item, the encoder writes `Spec.enc`: the encoding `Spec/Defs.lean` writes from RFC 8949, sections 3, 3.1 and 3.3, with each argument in its preferred (shortest) form, as sections 4.1 and 4.2.1 ask. | `Spec.cbor_encode_spec` |
-| The decoder's UTF-8 check gives the same answer, on every byte list, as the grammar of RFC 3629, section 4, written in `Spec/Utf8.lean`. `Value.wf` asks every text payload to meet that grammar. | `Spec.cbor_utf8_valid_eq` |
+| Decoding the encoding of a well-formed item gives the item back. | `Cbor.Spec.cbor_decode_encode` |
+| The decoder accepts bytes `bs` and returns the item `v` if and only if `v` is well-formed (`Value.wf`) and `bs` is the encoding of `v`. So it accepts the encodings of the well-formed items and nothing else, and never returns an item that is not well-formed. | `Cbor.Spec.cbor_encode_decode` |
+| For every item, the encoder writes `Cbor.Spec.enc`: the encoding `Cbor/Spec/Defs.lean` writes from RFC 8949, sections 3, 3.1 and 3.3, with each argument in its preferred (shortest) form, as sections 4.1 and 4.2.1 ask. | `Cbor.Spec.cbor_encode_spec` |
+| The decoder's UTF-8 check gives the same answer, on every byte list, as the grammar of RFC 3629, section 4, written in `Cbor/Spec/Utf8.lean`. `Value.wf` asks every text payload to meet that grammar. | `Cbor.Spec.cbor_utf8_valid_eq` |
 
 What the decoder turns away, for every input of the shape named:
 
 | Claim | Theorem |
 |-------|---------|
-| An initial byte with additional information 28 to 31 (reserved, or the indefinite form), whatever follows. | `Spec.cbor_rejects_reserved_ai` |
-| A tag (major type 6), whatever follows. | `Spec.cbor_rejects_tags` |
-| In major type 7, any initial byte but false, true and null: undefined, other simple values, every float, and break, whatever follows. | `Spec.cbor_rejects_simple` |
-| In major types 0 to 5, additional information 24, 25, 26 or 27 followed by an argument whose value fits a shorter form, whatever follows. | `Spec.cbor_rejects_nonpreferred` |
-| An item whose initial byte is outside the slice (`Spec.outOfSlice`), at the top, or as the next item of an array or the next key or value of a map, after any well-formed items before it in that container, whatever follows. This theorem covers one level of nesting; see What is not proved for deeper ones. | `Spec.cbor_rejects_nested_out_of_slice` |
-| Input that ends inside an item: no proper prefix of the encoding of a well-formed item decodes. | `Spec.cbor_rejects_truncated` |
+| An initial byte with additional information 28 to 31 (reserved, or the indefinite form), whatever follows. | `Cbor.Spec.cbor_rejects_reserved_ai` |
+| A tag (major type 6), whatever follows. | `Cbor.Spec.cbor_rejects_tags` |
+| In major type 7, any initial byte but false, true and null: undefined, other simple values, every float, and break, whatever follows. | `Cbor.Spec.cbor_rejects_simple` |
+| In major types 0 to 5, additional information 24, 25, 26 or 27 followed by an argument whose value fits a shorter form, whatever follows. | `Cbor.Spec.cbor_rejects_nonpreferred` |
+| An item whose initial byte is outside the slice (`Cbor.Spec.outOfSlice`), at the top, or as the next item of an array or the next key or value of a map, after any well-formed items before it in that container, whatever follows. This theorem covers one level of nesting; see What is not proved for deeper ones. | `Cbor.Spec.cbor_rejects_nested_out_of_slice` |
+| Input that ends inside an item: no proper prefix of the encoding of a well-formed item decodes. | `Cbor.Spec.cbor_rejects_truncated` |
 
 Examples, checked by the proofs:
 
 | Claim | Theorem |
 |-------|---------|
-| All 37 rows of RFC 8949 Appendix A that are in the slice hold in both directions: encoding the item gives the bytes, and decoding the bytes gives the item. | `Spec.cbor_rfc8949_vectors` |
-| All 44 rows of Appendix A outside the slice are turned away (bignums, floats, undefined and other simple values, tags, indefinite-length items alone and nested), and so is break on its own. | `Spec.cbor_rejects_out_of_slice` |
-| Five text items whose payloads are not well-formed UTF-8 are turned away. | `Spec.cbor_rejects_bad_utf8` |
-| Eight inputs are turned away: the empty input, six that end inside an item, and one that goes on after an item. | `Spec.cbor_rejects_truncation` |
+| All 37 rows of RFC 8949 Appendix A that are in the slice hold in both directions: encoding the item gives the bytes, and decoding the bytes gives the item. | `Cbor.Spec.cbor_rfc8949_vectors` |
+| All 44 rows of Appendix A outside the slice are turned away (bignums, floats, undefined and other simple values, tags, indefinite-length items alone and nested), and so is break on its own. | `Cbor.Spec.cbor_rejects_out_of_slice` |
+| Five text items whose payloads are not well-formed UTF-8 are turned away. | `Cbor.Spec.cbor_rejects_bad_utf8` |
+| Eight inputs are turned away: the empty input, six that end inside an item, and one that goes on after an item. | `Cbor.Spec.cbor_rejects_truncation` |
 
 `lake comparator --paranoid` checks that each proof proves exactly the
-statement in `Spec.lean`, uses no axiom but `propext`,
+statement in `Cbor/Spec.lean`, uses no axiom but `propext`,
 `Classical.choice` and `Quot.sound`, and is accepted by every kernel
 that ships with Lean.
 
@@ -97,20 +97,20 @@ Read this before trusting the codec with real data:
   rule is applied, and no key order is checked or produced. RFC 8949's
   core deterministic encoding (section 4.2.1) also sorts map keys; this
   slice takes only its rule for arguments.
-- That `Spec.enc`, `Value.wf` and `Spec.Utf8.wellFormed` say what
+- That `Cbor.Spec.enc`, `Value.wf` and `Cbor.Spec.Utf8.wellFormed` say what
   RFC 8949 and RFC 3629 say is the judgment of the spec reviewer, not a
   theorem. Examples in the spec files pin each boundary of the argument
   table and each row of the UTF-8 grammar.
-- `Spec.cbor_rejects_nested_out_of_slice` covers an out-of-slice item
+- `Cbor.Spec.cbor_rejects_nested_out_of_slice` covers an out-of-slice item
   one level inside an array or map. For deeper ones there is no
-  theorem of their own: `Spec.cbor_encode_decode` and
-  `Spec.cbor_encode_spec` say the decoder accepts only `Spec.enc v`,
-  and that `Spec.enc` never starts an item with such a byte is read
+  theorem of their own: `Cbor.Spec.cbor_encode_decode` and
+  `Cbor.Spec.cbor_encode_spec` say the decoder accepts only `Cbor.Spec.enc v`,
+  and that `Cbor.Spec.enc` never starts an item with such a byte is read
   from its definition. No row of Appendix A nests an out-of-slice item
   more than one level down. The three rows with an indefinite item
   inside a definite array (`83018202039f0405ff`, `83019f0203ff820405`
   and `826161bf61626163ff`) are instances of this theorem, and
-  `Spec.cbor_rejects_out_of_slice` also lists them. The tests nest
+  `Cbor.Spec.cbor_rejects_out_of_slice` also lists them. The tests nest
   such items up to three levels down.
 - The command-line tool in `Main.lean` calls the proved `decode` and
   `encode`, but its hex parsing and the canonical text form it prints
@@ -127,9 +127,9 @@ Read this before trusting the codec with real data:
 - The Lean compiler and runtime, which turn the proved definitions into
   the program that runs: a bug in them could make it differ.
 - The hardware and operating system the program runs on.
-- The specification itself: `SPEC.md`, `Spec.lean`, and the
-  definitions in `Spec/Defs.lean`, `Spec/Value.lean` and
-  `Spec/Utf8.lean`, which say what the theorems mean.
+- The specification itself: `SPEC.md`, `Cbor/Spec.lean`, and the
+  definitions in `Cbor/Spec/Defs.lean`, `Cbor/Spec/Value.lean` and
+  `Cbor/Spec/Utf8.lean`, which say what the theorems mean.
 
 There are no dependencies: `lake-manifest.json` lists no packages. The
 code uses none of the features bar item 4 forbids, so `bar.toml` lists
@@ -145,7 +145,7 @@ python3 tests/run_tests.py
 
 `lake build` builds the code, the challenge file and the proofs.
 `lake comparator --paranoid` checks, in a sandbox, that each theorem
-named in `comparator.json` proves exactly the statement in `Spec.lean`,
+named in `comparator.json` proves exactly the statement in `Cbor/Spec.lean`,
 uses only the three standard axioms, and passes every kernel. The test
 script builds the tool if needed, runs every input against the oracle,
 and rewrites `tests/TEST-RESULTS.md`. Where Python's cbor2 can be

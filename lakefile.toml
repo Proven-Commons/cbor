@@ -1,16 +1,18 @@
 name = "cbor"
 version = "0.1.0"
 license = "Apache-2.0"
-defaultTargets = ["Cbor", "Spec", "Proofs", "cbor"]
+defaultTargets = ["Cbor", "CborSpec", "CborProofs", "cbor"]
 
 [[lean_lib]]
 name = "Cbor"
 
 [[lean_lib]]
-name = "Spec"
+name = "CborSpec"
+roots = ["Cbor.Spec"]
 
 [[lean_lib]]
-name = "Proofs"
+name = "CborProofs"
+roots = ["Cbor.Proofs"]
 
 [[lean_exe]]
 name = "cbor"

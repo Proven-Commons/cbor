@@ -10,7 +10,7 @@
   and null (major type 7, additional information 20, 21, 22).
 -/
 
-import Spec.Utf8
+import Cbor.Spec.Utf8
 
 namespace Cbor
 
@@ -38,14 +38,14 @@ inductive Value where
 mutual
 /-- Does an item fit on the wire in this slice: every text payload is
     well-formed UTF-8 (RFC 8949, section 3.1, asks for RFC 3629, and
-    `Spec.Utf8.wellFormed` is its section 4 grammar), and every string
+    `Cbor.Spec.Utf8.wellFormed` is its section 4 grammar), and every string
     and container length fits in the 64-bit argument. Any item small
     enough to exist in memory passes the length checks. -/
 def Value.wf : Value → Bool
   | .uint _ => Bool.true
   | .nint _ => Bool.true
   | .bytes bs => bs.length < 2 ^ 64
-  | .text bs => Spec.Utf8.wellFormed bs && (bs.length < 2 ^ 64)
+  | .text bs => Cbor.Spec.Utf8.wellFormed bs && (bs.length < 2 ^ 64)
   | .array xs => xs.length < 2 ^ 64 && Value.wfAll xs
   | .map kvs => kvs.length < 2 ^ 64 && Value.wfPairs kvs
   | .vfalse => Bool.true

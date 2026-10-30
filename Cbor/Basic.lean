@@ -15,11 +15,11 @@
   and from a string happens at the edges, outside this slice.
 
   The item type `Value` and its well-formedness `Value.wf` are part of
-  the specification, in `Spec/Value.lean`, so the approval covers them.
+  the specification, in `Cbor/Spec/Value.lean`, so the approval covers them.
 -/
 
 import Cbor.Utf8
-import Spec.Value
+import Cbor.Spec.Value
 
 namespace Cbor
 

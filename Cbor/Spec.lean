@@ -2,17 +2,17 @@
   The specification as Lean statements: the challenge file.
 
   A reviewer who did not write this file approves it, and `bar.toml`
-  records the hash it had then. The proofs live in `Proofs.lean`, under
+  records the hash it had then. The proofs live in `Cbor/Proofs.lean`, under
   the same names. The `sorry` below is expected in this file only.
 
   The definitions the statements use besides the code are in
-  `Spec/Defs.lean`, `Spec/Value.lean` (the item type and `Value.wf`)
-  and `Spec/Utf8.lean` (well-formed UTF-8, from RFC 3629). They are
+  `Cbor/Spec/Defs.lean`, `Cbor/Spec/Value.lean` (the item type and `Value.wf`)
+  and `Cbor/Spec/Utf8.lean` (well-formed UTF-8, from RFC 3629). They are
   part of the specification too.
 -/
 
 import Cbor
-import Spec.Defs
+import Cbor.Spec.Defs
 
 open Cbor
 
@@ -20,48 +20,48 @@ open Cbor
 
 /-- Decoding an encoding returns the same item. (RFC 8949: the slice's
     well-formed items, as `Value.wf` defines.) -/
-theorem Spec.cbor_decode_encode (v : Value) (h : v.wf = true) :
+theorem Cbor.Spec.cbor_decode_encode (v : Value) (h : v.wf = true) :
     decode (encode v) = some v := sorry
 
 /-- The decoder accepts exactly the encodings of well-formed items, and
     nothing else: it accepts `bs` and returns `v` if and only if `v` is
     well-formed (`Value.wf`) and `bs` is the encoding of `v`. -/
-theorem Spec.cbor_encode_decode (bs : List UInt8) (v : Value) :
+theorem Cbor.Spec.cbor_encode_decode (bs : List UInt8) (v : Value) :
     decode bs = some v ↔ v.wf = true ∧ encode v = bs := sorry
 
 /-! ## The encoding is RFC 8949's preferred serialization -/
 
-/-- The encoder writes `Spec.enc`, the encoding `Spec/Defs.lean` writes
+/-- The encoder writes `Cbor.Spec.enc`, the encoding `Cbor/Spec/Defs.lean` writes
     from RFC 8949 (sections 3, 3.1 and 3.3, with the preferred
     serialization of sections 4.1 and 4.2.1), for every item. So the
     two claims above are about that encoding. -/
-theorem Spec.cbor_encode_spec (v : Value) : encode v = Spec.enc v := sorry
+theorem Cbor.Spec.cbor_encode_spec (v : Value) : encode v = Cbor.Spec.enc v := sorry
 
 /-! ## Text strings: the UTF-8 check is RFC 3629
 
-`Value.wf` asks every text payload to be `Spec.Utf8.wellFormed`, the
+`Value.wf` asks every text payload to be `Cbor.Spec.Utf8.wellFormed`, the
 grammar of RFC 3629, section 4. The decoder checks text payloads with
 `Utf8.valid`; this says the two agree on every byte list. -/
 
-theorem Spec.cbor_utf8_valid_eq (bs : List UInt8) :
-    Cbor.Utf8.valid bs = Spec.Utf8.wellFormed bs := sorry
+theorem Cbor.Spec.cbor_utf8_valid_eq (bs : List UInt8) :
+    Cbor.Utf8.valid bs = Cbor.Spec.Utf8.wellFormed bs := sorry
 
 /-! ## Additional information the RFC holds back, and the indefinite form -/
 
 /-- An initial byte with additional information 28 to 30 (reserved by
     RFC 8949, section 3) is turned away, as is 31, the indefinite
     form, which this slice does not carry. -/
-theorem Spec.cbor_rejects_reserved_ai (b : UInt8) (rest : List UInt8) :
+theorem Cbor.Spec.cbor_rejects_reserved_ai (b : UInt8) (rest : List UInt8) :
     b.toNat % 32 ≥ 28 → decode (b :: rest) = none := sorry
 
 /-- Tags (major type 6) are outside the slice and turned away. -/
-theorem Spec.cbor_rejects_tags (b : UInt8) (rest : List UInt8) :
+theorem Cbor.Spec.cbor_rejects_tags (b : UInt8) (rest : List UInt8) :
     b.toNat / 32 = 6 → decode (b :: rest) = none := sorry
 
 /-- Major type 7 carries only false, true, and null in this slice:
     undefined, other simple values, every float, and break are turned
     away. -/
-theorem Spec.cbor_rejects_simple (b : UInt8) (rest : List UInt8) :
+theorem Cbor.Spec.cbor_rejects_simple (b : UInt8) (rest : List UInt8) :
     b.toNat / 32 = 7 → b.toNat ≠ 0xf4 → b.toNat ≠ 0xf5 → b.toNat ≠ 0xf6 →
     decode (b :: rest) = none := sorry
 
@@ -72,7 +72,7 @@ directions. The other 44 (bignums, floats, undefined and other simple
 values, tags, and indefinite lengths) are turned away, in the theorem
 after this one. The differential tests run all 81. -/
 
-theorem Spec.cbor_rfc8949_vectors :
+theorem Cbor.Spec.cbor_rfc8949_vectors :
     -- Unsigned integers
     encode (.uint 0) = [0x00] ∧ decode [0x00] = some (.uint 0) ∧
     encode (.uint 1) = [0x01] ∧ decode [0x01] = some (.uint 1) ∧
@@ -159,7 +159,7 @@ theorem Spec.cbor_rfc8949_vectors :
     bignums (tags 2 and 3), floats, undefined, simple(16), simple(255),
     tags, and indefinite-length items, at the top or nested. Break on its
     own is turned away too. -/
-theorem Spec.cbor_rejects_out_of_slice :
+theorem Cbor.Spec.cbor_rejects_out_of_slice :
     -- Bignums (tags 2 and 3)
     decode [0xc2, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00] = none ∧
     decode [0xc3, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00] = none ∧
@@ -220,31 +220,31 @@ theorem Spec.cbor_rejects_out_of_slice :
     for every major type from 0 to 5, every value, and whatever bytes
     follow: additional information 24, 25, 26 or 27, followed by an
     argument in 1, 2, 4 or 8 bytes whose value fits a shorter form.
-    Every such argument is `Spec.netBytes` of its value. -/
-theorem Spec.cbor_rejects_nonpreferred (mt x : Nat) (rest : List UInt8) (hmt : mt ≤ 5) :
-    (x < 24 → decode ((mt * 32 + 24).toUInt8 :: Spec.netBytes 1 x ++ rest) = none) ∧
-    (x < 2 ^ 8 → decode ((mt * 32 + 25).toUInt8 :: Spec.netBytes 2 x ++ rest) = none) ∧
-    (x < 2 ^ 16 → decode ((mt * 32 + 26).toUInt8 :: Spec.netBytes 4 x ++ rest) = none) ∧
-    (x < 2 ^ 32 → decode ((mt * 32 + 27).toUInt8 :: Spec.netBytes 8 x ++ rest) = none) := sorry
+    Every such argument is `Cbor.Spec.netBytes` of its value. -/
+theorem Cbor.Spec.cbor_rejects_nonpreferred (mt x : Nat) (rest : List UInt8) (hmt : mt ≤ 5) :
+    (x < 24 → decode ((mt * 32 + 24).toUInt8 :: Cbor.Spec.netBytes 1 x ++ rest) = none) ∧
+    (x < 2 ^ 8 → decode ((mt * 32 + 25).toUInt8 :: Cbor.Spec.netBytes 2 x ++ rest) = none) ∧
+    (x < 2 ^ 16 → decode ((mt * 32 + 26).toUInt8 :: Cbor.Spec.netBytes 4 x ++ rest) = none) ∧
+    (x < 2 ^ 32 → decode ((mt * 32 + 27).toUInt8 :: Cbor.Spec.netBytes 8 x ++ rest) = none) := sorry
 
 /-- An item outside the slice is turned away at the top, and one level
     down: as the next item of an array, or as the next key or the next
     value of a map, after any well-formed items before it in that
-    container, and whatever bytes follow. `Spec.outOfSlice` says which
+    container, and whatever bytes follow. `Cbor.Spec.outOfSlice` says which
     initial bytes the slice does not carry. -/
-theorem Spec.cbor_rejects_nested_out_of_slice (b : UInt8) (rest : List UInt8) (n : Nat)
+theorem Cbor.Spec.cbor_rejects_nested_out_of_slice (b : UInt8) (rest : List UInt8) (n : Nat)
     (xs : List Value) (kvs : List (Value × Value)) (k : Value)
-    (hb : Spec.outOfSlice b = true) (hn : n < 2 ^ 64) (hxs : Value.wfAll xs = true)
+    (hb : Cbor.Spec.outOfSlice b = true) (hn : n < 2 ^ 64) (hxs : Value.wfAll xs = true)
     (hkvs : Value.wfPairs kvs = true) (hk : k.wf = true) :
     decode (b :: rest) = none ∧
-    (xs.length < n → decode (Spec.itemHead 4 n ++ Spec.encList xs ++ b :: rest) = none) ∧
-    (kvs.length < n → decode (Spec.itemHead 5 n ++ Spec.encPairs kvs ++ b :: rest) = none) ∧
+    (xs.length < n → decode (Cbor.Spec.itemHead 4 n ++ Cbor.Spec.encList xs ++ b :: rest) = none) ∧
+    (kvs.length < n → decode (Cbor.Spec.itemHead 5 n ++ Cbor.Spec.encPairs kvs ++ b :: rest) = none) ∧
     (kvs.length < n →
-      decode (Spec.itemHead 5 n ++ Spec.encPairs kvs ++ Spec.enc k ++ b :: rest) = none) :=
+      decode (Cbor.Spec.itemHead 5 n ++ Cbor.Spec.encPairs kvs ++ Cbor.Spec.enc k ++ b :: rest) = none) :=
   sorry
 
 /-- Text payloads that are not well-formed UTF-8 are turned away. -/
-theorem Spec.cbor_rejects_bad_utf8 :
+theorem Cbor.Spec.cbor_rejects_bad_utf8 :
     decode [0x61, 0x80] = none ∧
     decode [0x62, 0xc0, 0x80] = none ∧
     decode [0x62, 0xc3, 0x28] = none ∧
@@ -253,12 +253,12 @@ theorem Spec.cbor_rejects_bad_utf8 :
 
 /-- Input that ends inside an item is turned away: no proper prefix of
     the encoding of a well-formed item decodes. -/
-theorem Spec.cbor_rejects_truncated (v : Value) (pre post : List UInt8) (hv : v.wf = true)
-    (h : pre ++ post = Spec.enc v) (hpost : post ≠ []) : decode pre = none := sorry
+theorem Cbor.Spec.cbor_rejects_truncated (v : Value) (pre post : List UInt8) (hv : v.wf = true)
+    (h : pre ++ post = Cbor.Spec.enc v) (hpost : post ≠ []) : decode pre = none := sorry
 
 /-- Examples: the empty input, input that ends inside an item, and
     input that goes on after an item. -/
-theorem Spec.cbor_rejects_truncation :
+theorem Cbor.Spec.cbor_rejects_truncation :
     decode [] = none ∧
     decode [0x18] = none ∧
     decode [0x1b, 0xff, 0xff, 0xff] = none ∧

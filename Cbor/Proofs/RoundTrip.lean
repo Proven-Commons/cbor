@@ -3,8 +3,8 @@
 -/
 
 import Cbor
-import Spec.Defs
-import Proofs.Utf8
+import Cbor.Spec.Defs
+import Cbor.Proofs.Utf8
 
 open Cbor
 
@@ -596,8 +596,8 @@ theorem decode_encode (v : Value) (h : v.wf = true) : decode (encode v) = some v
   unfold decode
   rw [hmain]
 
-/-- Decoding an encoding returns the same item: `Spec.cbor_decode_encode`. -/
-theorem Spec.cbor_decode_encode (v : Value) (h : v.wf = true) :
+/-- Decoding an encoding returns the same item: `Cbor.Spec.cbor_decode_encode`. -/
+theorem Cbor.Spec.cbor_decode_encode (v : Value) (h : v.wf = true) :
     decode (encode v) = some v := decode_encode v h
 
 /-! ## Soundness: the decoder accepts nothing but encodings -/
@@ -1288,8 +1288,8 @@ theorem encode_decode (bs : List UInt8) (v : Value) (h : decode bs = some v) :
   · simp at h
 
 /-- The decoder accepts exactly the encodings of well-formed items:
-    `Spec.cbor_encode_decode`. -/
-theorem Spec.cbor_encode_decode (bs : List UInt8) (v : Value) :
+    `Cbor.Spec.cbor_encode_decode`. -/
+theorem Cbor.Spec.cbor_encode_decode (bs : List UInt8) (v : Value) :
     decode bs = some v ↔ v.wf = true ∧ encode v = bs := by
   constructor
   · exact encode_decode bs v

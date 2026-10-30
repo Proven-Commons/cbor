@@ -3,7 +3,7 @@
 -/
 
 import Cbor
-import Spec.Defs
+import Cbor.Spec.Defs
 
 open Cbor
 
@@ -15,7 +15,7 @@ theorem readArg_none_of_ge_28 {ai : Nat} {rest : List UInt8} (h : ai ≥ 28) :
   rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
       ite_eq_right (by omega)]
 
-theorem Spec.cbor_rejects_reserved_ai (b : UInt8) (rest : List UInt8) :
+theorem Cbor.Spec.cbor_rejects_reserved_ai (b : UInt8) (rest : List UInt8) :
     b.toNat % 32 ≥ 28 → decode (b :: rest) = none := by
   intro h
   have hnone : decodeFuel (rest.length + 1 + 1) (b :: rest) = none := by
@@ -28,7 +28,7 @@ theorem Spec.cbor_rejects_reserved_ai (b : UInt8) (rest : List UInt8) :
       · rw [ite_eq_right h6, readArg_none_of_ge_28 h]
   simp [decode, List.length_cons, hnone]
 
-theorem Spec.cbor_rejects_tags (b : UInt8) (rest : List UInt8) :
+theorem Cbor.Spec.cbor_rejects_tags (b : UInt8) (rest : List UInt8) :
     b.toNat / 32 = 6 → decode (b :: rest) = none := by
   intro h
   have hnone : decodeFuel (rest.length + 1 + 1) (b :: rest) = none := by
@@ -36,7 +36,7 @@ theorem Spec.cbor_rejects_tags (b : UInt8) (rest : List UInt8) :
     rw [ite_eq_right (by omega), ite_eq_left h]
   simp [decode, hnone]
 
-theorem Spec.cbor_rejects_simple (b : UInt8) (rest : List UInt8) :
+theorem Cbor.Spec.cbor_rejects_simple (b : UInt8) (rest : List UInt8) :
     b.toNat / 32 = 7 → b.toNat ≠ 0xf4 → b.toNat ≠ 0xf5 → b.toNat ≠ 0xf6 →
     decode (b :: rest) = none := by
   intro h7 h4 h5 h6
@@ -45,7 +45,7 @@ theorem Spec.cbor_rejects_simple (b : UInt8) (rest : List UInt8) :
     rw [ite_eq_left h7, ite_eq_right h4, ite_eq_right h5, ite_eq_right h6]
   simp [decode, hnone]
 
-theorem Spec.cbor_rfc8949_vectors :
+theorem Cbor.Spec.cbor_rfc8949_vectors :
     -- Unsigned integers
     encode (.uint 0) = [0x00] ∧ decode [0x00] = some (.uint 0) ∧
     encode (.uint 1) = [0x01] ∧ decode [0x01] = some (.uint 1) ∧
@@ -129,7 +129,7 @@ theorem Spec.cbor_rfc8949_vectors :
     encode .vnull = [0xf6] ∧ decode [0xf6] = some .vnull := by
   repeat (first | constructor | rfl)
 
-theorem Spec.cbor_rejects_out_of_slice :
+theorem Cbor.Spec.cbor_rejects_out_of_slice :
     -- Bignums (tags 2 and 3)
     decode [0xc2, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00] = none ∧
     decode [0xc3, 0x49, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00] = none ∧
@@ -187,7 +187,7 @@ theorem Spec.cbor_rejects_out_of_slice :
     decode [0xff] = none := by
   repeat (first | constructor | rfl)
 
-theorem Spec.cbor_rejects_bad_utf8 :
+theorem Cbor.Spec.cbor_rejects_bad_utf8 :
     decode [0x61, 0x80] = none ∧
     decode [0x62, 0xc0, 0x80] = none ∧
     decode [0x62, 0xc3, 0x28] = none ∧
@@ -195,7 +195,7 @@ theorem Spec.cbor_rejects_bad_utf8 :
     decode [0x64, 0xf4, 0x90, 0x80, 0x80] = none := by
   repeat (first | constructor | rfl)
 
-theorem Spec.cbor_rejects_truncation :
+theorem Cbor.Spec.cbor_rejects_truncation :
     decode [] = none ∧
     decode [0x18] = none ∧
     decode [0x1b, 0xff, 0xff, 0xff] = none ∧

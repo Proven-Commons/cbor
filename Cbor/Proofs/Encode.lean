@@ -1,10 +1,10 @@
 /-
   The encoder writes the encoding of the specification: `Cbor.encode v`
-  is `Spec.enc v` for every item.
+  is `Cbor.Spec.enc v` for every item.
 -/
 
 import Cbor
-import Spec.Defs
+import Cbor.Spec.Defs
 
 namespace Cbor
 
@@ -16,23 +16,23 @@ theorem toUInt8_eq (x y : Nat) (h : x % 256 = y % 256) : x.toUInt8 = y.toUInt8 :
 
 /-- Peeling the last byte off `netBytes`. -/
 theorem netBytes_succ (n x : Nat) :
-    Spec.netBytes (n + 1) x = Spec.netBytes n (x / 256) ++ [(x % 256).toUInt8] := by
+    Cbor.Spec.netBytes (n + 1) x = Cbor.Spec.netBytes n (x / 256) ++ [(x % 256).toUInt8] := by
   induction n generalizing x with
-  | zero => simp [Spec.netBytes]
+  | zero => simp [Cbor.Spec.netBytes]
   | succ n ih =>
-    rw [Spec.netBytes, ih x, Spec.netBytes, Nat.div_div_eq_div_mul, Nat.pow_succ,
+    rw [Cbor.Spec.netBytes, ih x, Cbor.Spec.netBytes, Nat.div_div_eq_div_mul, Nat.pow_succ,
       Nat.mul_comm 256 (256 ^ n)]
     rfl
 
 /-- The code's big-endian bytes are the specification's network byte
     order. -/
-theorem beBytes_eq_netBytes (n x : Nat) : beBytes n x = Spec.netBytes n x := by
+theorem beBytes_eq_netBytes (n x : Nat) : beBytes n x = Cbor.Spec.netBytes n x := by
   induction n generalizing x with
   | zero => rfl
   | succ n ih => rw [beBytes, ih, netBytes_succ]
 
 /-- The code's head is the specification's head. -/
-theorem head_eq_itemHead (mt arg : Nat) : head mt arg = Spec.itemHead mt arg := by
+theorem head_eq_itemHead (mt arg : Nat) : head mt arg = Cbor.Spec.itemHead mt arg := by
   have hadd : ∀ k : Nat, (mt * 32).toUInt8 + k.toUInt8 = (mt * 32 + k).toUInt8 := by
     intro k
     apply UInt8.toNat_inj.mp
@@ -41,8 +41,8 @@ theorem head_eq_itemHead (mt arg : Nat) : head mt arg = Spec.itemHead mt arg := 
     intro k hk
     apply UInt8.toNat_inj.mp
     rw [toNat_toUInt8, UInt8.toNat_ofNat]
-  unfold head Spec.itemHead
-  simp only [Spec.netBytes, beBytes_eq_netBytes]
+  unfold head Cbor.Spec.itemHead
+  simp only [Cbor.Spec.netBytes, beBytes_eq_netBytes]
   by_cases h1 : arg < 24
   · rw [ite_eq_left h1, ite_eq_left h1, hadd]
   · rw [ite_eq_right h1, ite_eq_right h1]
@@ -65,30 +65,30 @@ theorem head_eq_itemHead (mt arg : Nat) : head mt arg = Spec.itemHead mt arg := 
           rfl
 
 mutual
-theorem encode_eq_enc : ∀ v : Value, encode v = Spec.enc v
-  | .uint n => by simp only [encode, Spec.enc, head_eq_itemHead]
-  | .nint n => by simp only [encode, Spec.enc, head_eq_itemHead]
-  | .bytes bs => by simp only [encode, Spec.enc, head_eq_itemHead]
-  | .text bs => by simp only [encode, Spec.enc, head_eq_itemHead]
-  | .array xs => by simp only [encode, Spec.enc, head_eq_itemHead, encodeList_eq_encList xs]
-  | .map kvs => by simp only [encode, Spec.enc, head_eq_itemHead, encodePairs_eq_encPairs kvs]
+theorem encode_eq_enc : ∀ v : Value, encode v = Cbor.Spec.enc v
+  | .uint n => by simp only [encode, Cbor.Spec.enc, head_eq_itemHead]
+  | .nint n => by simp only [encode, Cbor.Spec.enc, head_eq_itemHead]
+  | .bytes bs => by simp only [encode, Cbor.Spec.enc, head_eq_itemHead]
+  | .text bs => by simp only [encode, Cbor.Spec.enc, head_eq_itemHead]
+  | .array xs => by simp only [encode, Cbor.Spec.enc, head_eq_itemHead, encodeList_eq_encList xs]
+  | .map kvs => by simp only [encode, Cbor.Spec.enc, head_eq_itemHead, encodePairs_eq_encPairs kvs]
   | .vfalse => rfl
   | .vtrue => rfl
   | .vnull => rfl
 
-theorem encodeList_eq_encList : ∀ xs : List Value, encodeList xs = Spec.encList xs
+theorem encodeList_eq_encList : ∀ xs : List Value, encodeList xs = Cbor.Spec.encList xs
   | [] => rfl
-  | x :: xs => by simp only [encodeList, Spec.encList, encode_eq_enc x, encodeList_eq_encList xs]
+  | x :: xs => by simp only [encodeList, Cbor.Spec.encList, encode_eq_enc x, encodeList_eq_encList xs]
 
-theorem encodePairs_eq_encPairs : ∀ kvs : List (Value × Value), encodePairs kvs = Spec.encPairs kvs
+theorem encodePairs_eq_encPairs : ∀ kvs : List (Value × Value), encodePairs kvs = Cbor.Spec.encPairs kvs
   | [] => rfl
   | (k, v) :: kvs => by
-    simp only [encodePairs, Spec.encPairs, encode_eq_enc k, encode_eq_enc v,
+    simp only [encodePairs, Cbor.Spec.encPairs, encode_eq_enc k, encode_eq_enc v,
       encodePairs_eq_encPairs kvs]
 end
 
 end Cbor
 
-/-- `Spec.cbor_encode_spec`. -/
-theorem Spec.cbor_encode_spec (v : Cbor.Value) : Cbor.encode v = Spec.enc v :=
+/-- `Cbor.Spec.cbor_encode_spec`. -/
+theorem Cbor.Spec.cbor_encode_spec (v : Cbor.Value) : Cbor.encode v = Cbor.Spec.enc v :=
   Cbor.encode_eq_enc v
